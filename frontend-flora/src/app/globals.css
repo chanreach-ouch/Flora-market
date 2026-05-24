@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Kantumruy Pro', sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: 'Playfair Display', serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  /* Flora Market custom colors */
+  --color-forest: #1a3a2a;
+  --color-forest-mid: #2d6a4f;
+  --color-accent-green: #52b788;
+  --color-pale-green: #d8f3dc;
+  --color-warm-white: #fdfaf5;
+  --color-cream: #f8f4ee;
+  --color-gold: #c9a84c;
+  --color-gold-light: #f0d080;
+  --color-error: #e07a5f;
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: #fdfaf5;
+  --foreground: #1a3a2a;
+  --card: #ffffff;
+  --card-foreground: #1a3a2a;
+  --popover: #ffffff;
+  --popover-foreground: #1a3a2a;
+  --primary: #1a3a2a;
+  --primary-foreground: #ffffff;
+  --secondary: #d8f3dc;
+  --secondary-foreground: #1a3a2a;
+  --muted: #f8f4ee;
+  --muted-foreground: #6b7a6f;
+  --accent: #2d6a4f;
+  --accent-foreground: #ffffff;
+  --destructive: #e07a5f;
+  --border: #d8e4dc;
+  --input: #d8e4dc;
+  --ring: #52b788;
+  --chart-1: #1a3a2a;
+  --chart-2: #2d6a4f;
+  --chart-3: #52b788;
+  --chart-4: #c9a84c;
+  --chart-5: #e07a5f;
+  --sidebar: #f8f4ee;
+  --sidebar-foreground: #1a3a2a;
+  --sidebar-primary: #1a3a2a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d8f3dc;
+  --sidebar-accent-foreground: #1a3a2a;
+  --sidebar-border: #d8e4dc;
+  --sidebar-ring: #52b788;
+}
+
+.dark {
+  --background: #0f1f17;
+  --foreground: #d8f3dc;
+  --card: #1a3a2a;
+  --card-foreground: #d8f3dc;
+  --popover: #1a3a2a;
+  --popover-foreground: #d8f3dc;
+  --primary: #d8f3dc;
+  --primary-foreground: #1a3a2a;
+  --secondary: #2d6a4f;
+  --secondary-foreground: #d8f3dc;
+  --muted: #1a3a2a;
+  --muted-foreground: #8fa898;
+  --accent: #52b788;
+  --accent-foreground: #1a3a2a;
+  --destructive: #e07a5f;
+  --border: #2d6a4f;
+  --input: #2d6a4f;
+  --ring: #52b788;
+  --chart-1: #d8f3dc;
+  --chart-2: #52b788;
+  --chart-3: #2d6a4f;
+  --chart-4: #f0d080;
+  --chart-5: #e07a5f;
+  --sidebar: #1a3a2a;
+  --sidebar-foreground: #d8f3dc;
+  --sidebar-primary: #d8f3dc;
+  --sidebar-primary-foreground: #1a3a2a;
+  --sidebar-accent: #2d6a4f;
+  --sidebar-accent-foreground: #d8f3dc;
+  --sidebar-border: #2d6a4f;
+  --sidebar-ring: #52b788;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Kantumruy Pro', sans-serif;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2d6a4f33;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2d6a4f55;
+}
+
+/* Hide scrollbar for horizontal scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Card shadow style */
+.card-shadow {
+  box-shadow: 0 2px 12px rgba(26,58,42,0.07), 0 1px 4px rgba(26,58,42,0.05);
+}
+
+.card-shadow-hover:hover {
+  box-shadow: 0 4px 20px rgba(26,58,42,0.12), 0 2px 8px rgba(26,58,42,0.08);
+}
+
+/* Smooth transitions */
+.transition-flora {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animated gradient background */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease infinite;
+}
+
+/* Success animation */
+@keyframes scaleIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Fade in up */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Stagger children */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
