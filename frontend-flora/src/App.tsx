@@ -23,7 +23,7 @@ import PrivacyPolicyScreen from '@/components/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '@/components/screens/TermsOfServiceScreen';
 
 export default function Home() {
-  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode } = useAppStore();
+  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode, fetchPlants } = useAppStore();
 
   // Apply dark mode on mount
   useEffect(() => {
@@ -33,6 +33,13 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Fetch real data on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPlants();
+    }
+  }, [isAuthenticated, fetchPlants]);
 
   // Ensure selectedPlantId is set when navigating to plant-detail
   useEffect(() => {

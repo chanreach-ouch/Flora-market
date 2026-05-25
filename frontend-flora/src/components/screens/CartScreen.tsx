@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getPlantById, getSellerById } from '@/lib/data';
 import { formatUSD, formatKHR } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +12,36 @@ import { Badge } from '@/components/ui/badge';
 import { Minus, Plus, Trash2, ShoppingBag, CreditCard, Shield } from 'lucide-react';
 
 export default function CartScreen() {
-  const { cartItems, removeFromCart, updateCartQuantity, clearCart, selectOrder, locale, setScreen } = useAppStore();
+  const { cartItems, removeFromCart, updateCartQuantity, clearCart, selectOrder, locale, setScreen, realPlants, realSellers, fetchPlants, fetchSellers } = useAppStore();
+  
+  useEffect(() => {
+    fetchPlants();
+    fetchSellers();
+  }, [fetchPlants, fetchSellers]);
+
   const [promoCode, setPromoCode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('aba');
 
   const cartWithDetails = cartItems.map(item => {
-    const plant = getPlantById(item.plantId);
-    const seller = plant ? getSellerById(plant.sellerId) : null;
-    return { ...item, plant, seller };
-  }).filter(item => item.plant);
+    const plant = realPlants.find(p => p.id === item.plantId) || { name_en: 'Unknown', name_kh: 'Unknown', price: 0, seller_id: '1', images: [] };
+    const seller = realSellers.find(s => s.id === plant.seller_id) || { nursery_name: 'Unknown', nursery_name_kh: 'Unknown' };
+    return {
+      ...item,
+      plant: {
+        id: plant.id,
+        nameEn: plant.name_en,
+        nameKh: plant.name_kh,
+        price: plant.price,
+        images: plant.images
+      },
+      seller: {
+        id: seller.id,
+        nurseryName: seller.nursery_name,
+        nurseryNameKh: seller.nursery_name_kh
+      }
+    };
+  });
+
 
   // Group by seller
   const groupedBySeller = cartWithDetails.reduce((acc, item) => {

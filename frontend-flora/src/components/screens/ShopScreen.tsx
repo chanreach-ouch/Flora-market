@@ -1,22 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getSellerById, getPlantsBySeller, getReviewsBySeller, plantEmojis } from '@/lib/data';
+import { getReviewsBySeller, plantEmojis } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Star, MapPin, ShoppingCart, Heart, Calendar, CheckCircle, ArrowLeft } from 'lucide-react';
 
 export default function ShopScreen() {
-  const { selectedSellerId, locale, userRole, goBack, selectPlant, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const seller = getSellerById(selectedSellerId || 'seller-1');
+  const { selectedSellerId, locale, userRole, goBack, selectPlant, addToCart, addToWishlist, removeFromWishlist, isInWishlist, realPlants, realSellers, fetchPlants, fetchSellers } = useAppStore();
+  
+  useEffect(() => {
+    fetchPlants();
+    fetchSellers();
+  }, [fetchPlants, fetchSellers]);
+
+  const rawSeller = realSellers?.find(s => s.id === selectedSellerId);
+  const seller = rawSeller ? {
+    id: rawSeller.id,
+    nurseryName: rawSeller.nursery_name,
+    nurseryNameKh: rawSeller.nursery_name_kh || rawSeller.nursery_name,
+    location: rawSeller.location || "Phnom Penh",
+    rating: rawSeller.rating || 4.5,
+    isVerified: rawSeller.is_verified,
+    totalPlants: rawSeller.total_plants || 1,
+    description: rawSeller.description || "",
+    joinedDate: rawSeller.created_at || "2023",
+    bannerImage: rawSeller.banner_image || "/images/shops/green-haven-banner.jpg",
+    profileImage: rawSeller.profile_image || "/images/shops/green-haven-logo.jpg"
+  } : null;
+
   const [activeTab, setActiveTab] = useState<'plants' | 'reviews' | 'about'>('plants');
 
   if (!seller) return null;
 
-  const sellerPlants = getPlantsBySeller(seller.id);
+  const sellerPlants = realPlants.filter(p => p.seller_id === seller.id).map(rawPlant => ({
+    id: rawPlant.id,
+    nameEn: rawPlant.name_en,
+    nameKh: rawPlant.name_kh,
+    category: rawPlant.category,
+    price: rawPlant.price,
+    stock: rawPlant.stock,
+    sellerId: rawPlant.seller_id,
+    tagline: rawPlant.tagline || rawPlant.name_en,
+    images: rawPlant.images || [],
+    isNew: rawPlant.is_new
+  }));
   const sellerReviews = getReviewsBySeller(seller.id);
 
   return (
@@ -99,9 +130,13 @@ export default function ShopScreen() {
               <Card key={plant.id} className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">
                 <div className="relative" onClick={() => selectPlant(plant.id)}>
                   <div className="aspect-square bg-gradient-to-br from-pale-green to-cream dark:from-forest-mid/30 dark:to-forest/30 flex items-center justify-center">
-                    <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
-                      {plantEmojis[plant.category] || '🌿'}
-                    </span>
+                    {plant.images?.[0] ? (
+                      <img src={plant.images[0]} alt={locale === 'kh' ? plant.nameKh : plant.nameEn} className="w-full h-full object-cover mix-blend-multiply" />
+                    ) : (
+                      <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
+                        {plantEmojis[plant.category] || '🌿'}
+                      </span>
+                    )}
                   </div>
                   {userRole !== 'seller' && (
                     <button

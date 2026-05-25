@@ -11,17 +11,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Search, Heart, ShoppingCart, Star, MapPin } from 'lucide-react';
 
 export default function HomeScreen() {
-  const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist, setScreen } = useAppStore();
+  const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist, setScreen, realPlants } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const filteredPlants = getPlantsByCategory(selectedCategory).filter(p => {
+  // Use real data if available, otherwise fallback to mock data
+  const dataToUse = realPlants && realPlants.length > 0 ? realPlants : plants;
+  
+  const filteredPlants = dataToUse.filter(p => {
+    if (selectedCategory !== 'All' && p.category !== selectedCategory) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q) || p.tagline.toLowerCase().includes(q);
+    const nameEn = p.name_en || p.nameEn || '';
+    const nameKh = p.name_kh || p.nameKh || '';
+    const tagline = p.tagline || '';
+    return nameEn.toLowerCase().includes(q) || nameKh.includes(q) || (tagline && tagline.toLowerCase().includes(q));
   });
 
-  const newArrivals = getNewArrivals();
+  const newArrivals = dataToUse.filter(p => p.is_new || p.isNew).slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -98,8 +105,11 @@ export default function HomeScreen() {
 
 function PlantCard({ plant }: { plant: any }) {
   const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const seller = getSellerById(plant.sellerId);
+  const sellerId = plant.seller_id || plant.sellerId;
+  const seller = getSellerById(sellerId);
   const wishlisted = isInWishlist(plant.id);
+  const nameEn = plant.name_en || plant.nameEn;
+  const nameKh = plant.name_kh || plant.nameKh;
 
   return (
     <Card className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">
@@ -123,7 +133,7 @@ function PlantCard({ plant }: { plant: any }) {
         </button>
 
         {/* New Badge */}
-        {plant.isNew && (
+        {(plant.isNew || plant.is_new) && (
           <Badge className="absolute top-2 left-2 bg-accent-green text-white text-[10px]">
             {t(locale, 'newArrivals')}
           </Badge>
@@ -135,7 +145,7 @@ function PlantCard({ plant }: { plant: any }) {
           className="font-semibold text-sm sm:text-base mb-1 line-clamp-1 cursor-pointer hover:text-accent-green transition-colors"
           onClick={() => selectPlant(plant.id)}
         >
-          {locale === 'kh' ? plant.nameKh : plant.nameEn}
+          {locale === 'kh' ? nameKh : nameEn}
         </h3>
 
         <p className="text-xs text-muted-foreground mb-2 line-clamp-1">

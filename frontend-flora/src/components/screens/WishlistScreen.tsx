@@ -1,16 +1,34 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getPlantById, getSellerById, plantEmojis } from '@/lib/data';
+import { plantEmojis } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, ShoppingCart, Star, Trash2, ArrowLeft } from 'lucide-react';
 
 export default function WishlistScreen() {
-  const { locale, goBack, wishlistItems, removeFromWishlist, addToCart, selectPlant, userRole } = useAppStore();
+  const { wishlistItems, removeFromWishlist, addToCart, selectPlant, locale, goBack, realPlants, fetchPlants, realSellers, fetchSellers } = useAppStore();
 
-  const wishlistPlants = wishlistItems.map(id => getPlantById(id)).filter(Boolean);
+  useEffect(() => {
+    fetchPlants();
+    fetchSellers();
+  }, [fetchPlants, fetchSellers]);
+
+  const mappedPlants = realPlants.map(p => ({
+    id: p.id,
+    nameEn: p.name_en,
+    nameKh: p.name_kh,
+    category: p.category,
+    price: p.price,
+    sellerId: p.seller_id,
+    images: p.images || [],
+    tagline: p.tagline || p.name_en,
+    rating: 4.5
+  }));
+
+  const wishlistPlants = wishlistItems.map(id => mappedPlants.find(p => p.id === id)).filter(Boolean);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -31,14 +49,18 @@ export default function WishlistScreen() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {wishlistPlants.map(plant => {
             if (!plant) return null;
-            const seller = getSellerById(plant.sellerId);
+            const seller = realSellers?.find(s => s.id === plant.sellerId);
             return (
               <Card key={plant.id} className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">
                 <div className="relative" onClick={() => selectPlant(plant.id)}>
                   <div className="aspect-square bg-gradient-to-br from-pale-green to-cream dark:from-forest-mid/30 dark:to-forest/30 flex items-center justify-center">
-                    <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
-                      {plantEmojis[plant.category] || '🌿'}
-                    </span>
+                    {plant.images?.[0] ? (
+                      <img src={plant.images[0]} alt={locale === 'kh' ? plant.nameKh : plant.nameEn} className="w-full h-full object-cover mix-blend-multiply" />
+                    ) : (
+                      <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
+                        {plantEmojis[plant.category] || '🌿'}
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFromWishlist(plant.id); }}

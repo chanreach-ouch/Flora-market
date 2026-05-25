@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { plants, categories, plantEmojis, getPlantsByCategory, getSellerById } from '@/lib/data';
+import { categories, plantEmojis } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,14 +12,38 @@ import { Slider } from '@/components/ui/slider';
 import { Search, Heart, ShoppingCart, Star, MapPin, SlidersHorizontal, X } from 'lucide-react';
 
 export default function BrowseScreen() {
-  const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
+  const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist, realPlants, fetchPlants, realSellers, fetchSellers } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceRange, setPriceRange] = useState([0, 50]);
   const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high' | 'rating'>('name');
   const [showFilters, setShowFilters] = useState(false);
 
-  let filtered = getPlantsByCategory(selectedCategory).filter(p => {
+  useEffect(() => {
+    fetchPlants();
+    fetchSellers();
+  }, [fetchPlants, fetchSellers]);
+
+  const mappedPlants = realPlants.map(p => ({
+    id: p.id,
+    nameEn: p.name_en,
+    nameKh: p.name_kh,
+    category: p.category,
+    price: p.price,
+    stock: p.stock,
+    sellerId: p.seller_id,
+    images: p.images || [],
+    tagline: p.tagline || p.name_en,
+    rating: 4.5,
+    isNew: p.is_new
+  }));
+
+  const getPlantsByCategoryFiltered = (cat: string) => {
+    if (cat === 'All') return mappedPlants;
+    return mappedPlants.filter(p => p.category === cat);
+  };
+
+  let filtered = getPlantsByCategoryFiltered(selectedCategory).filter(p => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q);
@@ -151,15 +175,19 @@ export default function BrowseScreen() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filtered.map(plant => {
-                const seller = getSellerById(plant.sellerId);
+                const seller = realSellers?.find(s => s.id === plant.sellerId);
                 const wishlisted = isInWishlist(plant.id);
                 return (
                   <Card key={plant.id} className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">
                     <div className="relative" onClick={() => selectPlant(plant.id)}>
                       <div className="aspect-square bg-gradient-to-br from-pale-green to-cream dark:from-forest-mid/30 dark:to-forest/30 flex items-center justify-center">
-                        <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
-                          {plantEmojis[plant.category] || '🌿'}
-                        </span>
+                        {plant.images?.[0] ? (
+                          <img src={plant.images[0]} alt={locale === 'kh' ? plant.nameKh : plant.nameEn} className="w-full h-full object-cover mix-blend-multiply" />
+                        ) : (
+                          <span className="text-5xl opacity-80 group-hover:scale-110 transition-transform">
+                            {plantEmojis[plant.category] || '🌿'}
+                          </span>
+                        )}
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); wishlisted ? removeFromWishlist(plant.id) : addToWishlist(plant.id); }}

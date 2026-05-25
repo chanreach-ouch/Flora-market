@@ -40,6 +40,10 @@ interface AppState {
   // Wishlist
   wishlistItems: string[];
 
+  // Real Database Data
+  realPlants: any[];
+  realSellers: any[];
+
   // Actions
   setScreen: (screen: Screen) => void;
   goBack: () => void;
@@ -61,6 +65,9 @@ interface AppState {
   addToWishlist: (plantId: string) => void;
   removeFromWishlist: (plantId: string) => void;
   isInWishlist: (plantId: string) => boolean;
+
+  fetchPlants: () => Promise<void>;
+  fetchSellers: () => Promise<void>;
 }
 
 // localStorage persistence helpers
@@ -152,6 +159,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   darkMode: persisted?.darkMode ?? false,
   cartItems: persisted?.cartItems ?? [],
   wishlistItems: persisted?.wishlistItems ?? [],
+  realPlants: [],
+  realSellers: [],
 
   setScreen: (screen) => set({ currentScreen: screen, previousScreen: get().currentScreen }),
   goBack: () => {
@@ -315,4 +324,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   isInWishlist: (plantId) => get().wishlistItems.includes(plantId),
+
+  fetchPlants: async () => {
+    try {
+      const data = await fetchApi('/plants/');
+      set({ realPlants: data });
+    } catch (e) {
+      console.error('Failed to fetch plants:', e);
+    }
+  },
+
+  fetchSellers: async () => {
+    try {
+      const data = await fetchApi('/sellers/');
+      set({ realSellers: data });
+    } catch (e) {
+      console.error('Failed to fetch sellers:', e);
+    }
+  },
 }));
