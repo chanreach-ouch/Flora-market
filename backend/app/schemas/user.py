@@ -4,11 +4,13 @@ from app.models.user import UserRole
 from datetime import datetime
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
+    role: Optional[UserRole] = UserRole.customer
 
 class UserResponse(UserBase):
     id: str

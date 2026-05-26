@@ -61,6 +61,11 @@ interface AppState {
   addToWishlist: (plantId: string) => void;
   removeFromWishlist: (plantId: string) => void;
   isInWishlist: (plantId: string) => boolean;
+
+  // Real API Data
+  plants: any[];
+  isLoadingPlants: boolean;
+  fetchPlants: () => Promise<void>;
 }
 
 // localStorage persistence helpers
@@ -152,6 +157,41 @@ export const useAppStore = create<AppState>((set, get) => ({
   darkMode: persisted?.darkMode ?? false,
   cartItems: persisted?.cartItems ?? [],
   wishlistItems: persisted?.wishlistItems ?? [],
+  plants: [],
+  isLoadingPlants: false,
+
+  fetchPlants: async () => {
+    set({ isLoadingPlants: true });
+    try {
+      const data = await fetchApi('/plants');
+      
+      // format variables from backend snake_case to camelCase
+      const formattedData = data.map((item: any) => ({
+        ...item,
+        sellerId: item.seller_id,
+        nameEn: item.name_en,
+        nameKh: item.name_kh,
+        taglineKh: item.tagline_kh,
+        waterFreq: item.water_freq,
+        waterFreqKh: item.water_freq_kh,
+        lightReq: item.light_req,
+        lightReqKh: item.light_req_kh,
+        tempRange: item.temp_range,
+        difficultyKh: item.difficulty_kh,
+        totalSold: item.total_sold,
+        reviewCount: item.review_count,
+        isNew: item.is_new,
+        isActive: item.is_active,
+        prosKh: item.pros_kh,
+        consKh: item.cons_kh,
+      }));
+
+      set({ plants: formattedData, isLoadingPlants: false });
+    } catch (e) {
+      console.error(e);
+      set({ isLoadingPlants: false });
+    }
+  },
 
   setScreen: (screen) => set({ currentScreen: screen, previousScreen: get().currentScreen }),
   goBack: () => {

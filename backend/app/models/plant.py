@@ -36,6 +36,21 @@ class Plant(Base):
     total_sold: Mapped[int] = mapped_column(Integer, default=0)
     rating: Mapped[float] = mapped_column(Float, default=0.0)
     review_count: Mapped[int] = mapped_column(Integer, default=0)
+    is_new: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Relationships
+    seller: Mapped[Optional["Seller"]] = relationship("Seller", back_populates="plants")
+    order_items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="plant")
+    reviews: Mapped[List["Review"]] = relationship("Review", back_populates="plant")
+    light_req_kh: Mapped[Optional[str]] = mapped_column(String)
+    temp_range: Mapped[Optional[str]] = mapped_column(String)
+    difficulty: Mapped[Optional[str]] = mapped_column(String)
+    difficulty_kh: Mapped[Optional[str]] = mapped_column(String)
+    
+    total_sold: Mapped[int] = mapped_column(Integer, default=0)
+    rating: Mapped[float] = mapped_column(Float, default=0.0)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
     
     is_new: Mapped[bool] = mapped_column(Boolean, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

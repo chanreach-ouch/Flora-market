@@ -2,7 +2,7 @@
 
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getPlantById, getSellerById, getReviewsByPlant, plantEmojis } from '@/lib/data';
+import { getReviewsByPlant, plantEmojis } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,11 +10,53 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Heart, ShoppingCart, Star, MapPin, Droplets, Sun, Thermometer, Gauge, Truck, Check, X as XIcon } from 'lucide-react';
 
 export default function PlantDetailScreen() {
-  const { selectedPlantId, locale, goBack, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const plant = getPlantById(selectedPlantId || 'plant-1');
-  if (!plant) return null;
+  const { selectedPlantId, locale, goBack, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist, realPlants, realSellers } = useAppStore();
+  
+  const rawPlant = realPlants.find(p => p.id === selectedPlantId);
+  if (!rawPlant) return null;
 
-  const seller = getSellerById(plant.sellerId);
+  const plant = {
+    id: rawPlant.id,
+    nameEn: rawPlant.name_en,
+    nameKh: rawPlant.name_kh,
+    category: rawPlant.category,
+    price: rawPlant.price,
+    stock: rawPlant.stock,
+    sellerId: rawPlant.seller_id,
+    tagline: rawPlant.tagline || rawPlant.name_en,
+    taglineKh: rawPlant.tagline_kh || rawPlant.name_kh,
+    images: rawPlant.images || [],
+    pros: rawPlant.pros || [],
+    prosKh: rawPlant.pros_kh || [],
+    cons: rawPlant.cons || [],
+    consKh: rawPlant.cons_kh || [],
+    waterFreq: rawPlant.water_freq || "Weekly",
+    waterFreqKh: rawPlant.water_freq_kh || "រៀងរាល់សប្តាហ៍",
+    lightReq: rawPlant.light_req || "Bright indirect",
+    lightReqKh: rawPlant.light_req_kh || "ពន្លឺមិនផ្ទាល់",
+    tempRange: rawPlant.temp_range || "18-27°C",
+    difficulty: rawPlant.difficulty || "Easy",
+    difficultyKh: rawPlant.difficulty_kh || "ងាយស្រួល",
+    isNew: rawPlant.is_new,
+    rating: 4.8,
+    reviewCount: 12,
+    totalSold: 45
+  };
+
+  const rawSeller = realSellers?.find(s => s.id === plant.sellerId);
+  const seller = rawSeller ? {
+    id: rawSeller.id,
+    nurseryName: rawSeller.nursery_name,
+    nurseryNameKh: rawSeller.nursery_name_kh || rawSeller.nursery_name,
+    location: rawSeller.location || "Phnom Penh",
+    district: "Unknown",
+    city: "Phnom Penh",
+    rating: rawSeller.rating || 4.5,
+    isVerified: rawSeller.is_verified,
+    totalPlants: rawSeller.total_plants || 1,
+    avatar: rawSeller.profile_image || "/images/shops/green-haven-logo.jpg",
+  } : null;
+
   const reviews = getReviewsByPlant(plant.id);
   const wishlisted = isInWishlist(plant.id);
 
