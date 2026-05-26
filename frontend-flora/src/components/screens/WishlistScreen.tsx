@@ -53,15 +53,25 @@ export default function WishlistScreen() {
                     <Star className="h-3 w-3 fill-gold text-gold" />
                     <span className="text-xs">{plant.rating}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">${plant.price.toFixed(2)}</span>
-                    <div className="flex gap-1">
-                      <Button size="sm" className="h-7 px-2 bg-accent-green hover:bg-forest-mid text-white" onClick={(e) => { e.stopPropagation(); addToCart(plant.id); }}>
-                        <ShoppingCart className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={(e) => { e.stopPropagation(); removeFromWishlist(plant.id); }}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                  <div className="flex items-center justify-between gap-3 w-full mt-1">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-lg font-black text-[#0F3738] leading-none">${plant.price.toFixed(2)}</span>
+                      <span className="text-[11px] text-slate-400 font-bold mt-1">៛{Math.round(plant.price * 4100).toLocaleString()}</span>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button 
+                        className="bg-[#42AB7F] text-white font-extrabold px-3 py-2.5 rounded-2xl flex items-center justify-center gap-1.5 text-xs hover:bg-[#348e68] transition-colors"
+                        onClick={(e) => { e.stopPropagation(); addToCart(plant.id); }}
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        <span className="hidden sm:inline">{t(locale, 'addToCart')}</span>
+                      </button>
+                      <button 
+                        className="bg-red-50 text-red-500 hover:bg-red-100 font-extrabold px-3 py-2.5 rounded-2xl flex items-center justify-center text-xs transition-colors"
+                        onClick={(e) => { e.stopPropagation(); removeFromWishlist(plant.id); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </CardContent>

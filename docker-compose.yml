@@ -51,6 +51,9 @@ services:
     container_name: flora_frontend
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend-flora:/app
+      - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
@@ -63,6 +66,9 @@ services:
     container_name: flora_admin
     ports:
       - "5174:5173"
+    volumes:
+      - ./frontend-flora-admin:/app
+      - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:

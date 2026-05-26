@@ -118,11 +118,18 @@ export default function ShopScreen() {
                     <Star className="h-3 w-3 fill-gold text-gold" />
                     <span className="text-xs">{plant.rating}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold">${plant.price.toFixed(2)}</span>
-                    <Button size="sm" className="h-7 px-2 bg-accent-green hover:bg-forest-mid text-white" onClick={(e) => { e.stopPropagation(); addToCart(plant.id); }}>
-                      <ShoppingCart className="h-3 w-3" />
-                    </Button>
+                  <div className="flex items-center justify-between gap-3 w-full mt-1">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-lg font-black text-[#0F3738] leading-none">${plant.price.toFixed(2)}</span>
+                      <span className="text-[11px] text-slate-400 font-bold mt-1">៛{Math.round(plant.price * 4100).toLocaleString()}</span>
+                    </div>
+                    <button 
+                      className="bg-[#42AB7F] text-white font-extrabold px-3 py-2.5 sm:px-4 sm:py-3 rounded-2xl flex items-center justify-center gap-1.5 text-xs shrink-0 hover:bg-[#348e68] transition-colors"
+                      onClick={(e) => { e.stopPropagation(); addToCart(plant.id); }}
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{t(locale, 'addToCart')}</span>
+                    </button>
                   </div>
                 </CardContent>
               </Card>
