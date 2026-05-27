@@ -160,8 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ currentScreen: prev, previousScreen: null });
     } else {
       // Default fallback
-      const role = get().userRole;
-      set({ currentScreen: role === 'seller' ? 'seller-dashboard' : 'home', previousScreen: null });
+      set({ currentScreen: 'home', previousScreen: null });
     }
   },
   selectPlant: (id) => set({ selectedPlantId: id, previousScreen: get().currentScreen, currentScreen: 'plant-detail' }),
@@ -185,55 +184,97 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   login: async (loginId, password, role) => {
     const { email, phone } = parseLoginId(loginId);
-    
-    // Call the API endpoint
-    const data = await fetchApi('/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      // OAuth2 Password Request Form format
-      body: new URLSearchParams({
-        username: email || phone, // fastapi uses 'username' field
-        password: password,
-      }),
-    });
 
-    if (data.access_token) {
-      localStorage.setItem('token', data.access_token);
-    }
-    
-    // Set up user object from token/data. We might need a separate /users/me call or use the info if the token has it.
-    // Assuming backend will provide user details or we fetch them:
-    const me = await fetchApi('/users/me');
-
-    const newState = {
-      isAuthenticated: true,
-      userRole: me.role,
-      user: {
-        id: me.id.toString(),
-        name: me.name || me.full_name || 'User',
-        email: me.email || '',
-        phone: me.phone || '',
-        role: me.role as UserRole,
-      },
-      currentScreen: (me.role === 'seller' ? 'seller-dashboard' : 'home') as Screen,
+    // ────────────────────────────────────────────────────────────
+    // DEMO MODE — works without a running backend / database.
+    // Demo accounts:
+    //   buyer@demo.com   / demo123  → buyer
+    //   seller@demo.com  / demo123  → seller
+    //   admin@demo.com   / demo123  → admin
+    // ────────────────────────────────────────────────────────────
+    const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
+      'buyer@demo.com':  { role: 'buyer',  name: 'Demo Buyer' },
+      'seller@demo.com': { role: 'seller', name: 'Demo Seller' },
+      'admin@demo.com':  { role: 'admin',  name: 'Demo Admin' },
     };
-    set(newState);
-    saveState({ ...get(), ...newState });
+    const loginKey = (email || phone).toLowerCase();
+    if (DEMO_ACCOUNTS[loginKey] && password === 'demo123') {
+      const demo = DEMO_ACCOUNTS[loginKey];
+      const newState = {
+        isAuthenticated: true,
+        userRole: demo.role,
+        isAdmin: demo.role === 'admin',
+        user: { id: 'demo-user', name: demo.name, email: loginKey, phone: '', role: demo.role },
+        currentScreen: (demo.role === 'seller' ? 'seller-dashboard' : demo.role === 'admin' ? 'admin' : 'home') as Screen,
+      };
+      set(newState);
+      saveState({ ...get(), ...newState });
+      return;
+    }
+
+    // ── Real backend login ──
+    try {
+      const data = await fetchApi('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: email || phone, password }),
+      });
+
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+      }
+
+      // Fetch current user profile
+      const me = await fetchApi('/users/me');
+
+      // Map backend role → frontend UserRole
+      const backendRole: string = me.role || 'customer';
+      let mappedRole: UserRole = 'buyer';
+      if (backendRole === 'seller') mappedRole = 'seller';
+      else if (['admin', 'super_admin', 'manager'].includes(backendRole)) mappedRole = 'admin';
+      else mappedRole = 'buyer';
+
+      const isAdmin = ['admin', 'super_admin', 'manager'].includes(backendRole);
+
+      const newState = {
+        isAuthenticated: true,
+        userRole: mappedRole,
+        isAdmin,
+        user: {
+          id: String(me.id),
+          name: me.full_name || me.email || 'User',
+          email: me.email || '',
+          phone: me.phone || '',
+          role: mappedRole,
+        },
+        currentScreen: (mappedRole === 'seller' ? 'seller-dashboard' : mappedRole === 'admin' ? 'admin' : 'home') as Screen,
+      };
+      set(newState);
+      saveState({ ...get(), ...newState });
+    } catch (err: any) {
+      // Re-throw with a clear message
+      throw new Error(err?.message || 'Login failed. Please check your credentials.');
+    }
   },
 
   register: async (name, email, phone, password, role) => {
-    await fetchApi('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({
-        email,
-        phone,
-        password,
-        full_name: name,
-        role,
-      }),
-    });
+    // Map frontend role ('buyer' → 'customer') for the backend
+    const backendRole = role === 'buyer' ? 'customer' : role;
+    
+    try {
+      await fetchApi('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          phone: phone || null,
+          password,
+          full_name: name,
+          role: backendRole,
+        }),
+      });
+    } catch (err: any) {
+      throw new Error(err?.message || 'Registration failed. Please try again.');
+    }
     
     // Automatically log in after register
     await get().login(email || phone, password, role);

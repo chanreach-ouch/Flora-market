@@ -25,8 +25,6 @@ import {
   Heart,
   User,
   LayoutDashboard,
-  Leaf,
-  Package,
   Settings,
   LogOut,
   Menu,
@@ -61,9 +59,10 @@ export default function Navbar() {
   ];
 
   const sellerLinks = [
+    { icon: Home, label: t(locale, 'home'), screen: 'home' as const },
+    { icon: Search, label: t(locale, 'browse'), screen: 'browse' as const },
     { icon: LayoutDashboard, label: t(locale, 'dashboard'), screen: 'seller-dashboard' as const },
-    { icon: Leaf, label: t(locale, 'myPlants'), screen: 'seller-dashboard' as const },
-    { icon: Package, label: t(locale, 'sellerOrders'), screen: 'seller-dashboard' as const },
+    { icon: ShoppingCart, label: t(locale, 'myCart'), screen: 'cart' as const, badge: cartCount },
   ];
 
   const adminLinks = [
@@ -83,7 +82,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <button
-          onClick={() => setScreen(userRole === 'seller' ? 'seller-dashboard' : 'home')}
+          onClick={() => setScreen('home')}
           className="flex items-center gap-2 hover:opacity-80 transition-flora"
         >
           <span className="text-2xl">🌿</span>

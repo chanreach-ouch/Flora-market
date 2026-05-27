@@ -161,14 +161,16 @@ function PlantCard({ plant }: { plant: any }) {
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-bold text-sm sm:text-base">${plant.price.toFixed(2)}</span>
-            <span className="text-xs text-muted-foreground ml-1">៛{Math.round(plant.price * 4100).toLocaleString()}</span>
+        <div className="flex items-center justify-between gap-3 w-full mt-1">
+          {/* Price Wrapper */}
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-sm sm:text-base leading-none">${plant.price.toFixed(2)}</span>
+            <span className="text-xs text-muted-foreground mt-0.5">៛{Math.round(plant.price * 4100).toLocaleString()}</span>
           </div>
+          {/* Symmetrical & Safe Button */}
           <Button
             size="sm"
-            className="h-8 px-3 bg-accent-green hover:bg-forest-mid text-white"
+            className="h-8 px-3 bg-accent-green hover:bg-forest-mid text-white shrink-0"
             onClick={(e) => { e.stopPropagation(); addToCart(plant.id); }}
           >
             <ShoppingCart className="h-3.5 w-3.5 sm:mr-1" />

@@ -24,7 +24,7 @@ import PrivacyPolicyScreen from '@/components/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '@/components/screens/TermsOfServiceScreen';
 
 export default function Home() {
-  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode } = useAppStore();
+  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, darkMode } = useAppStore();
 
   // Apply dark mode on mount
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function Home() {
         return <TermsOfServiceScreen />;
       case 'home':
       default:
-        return userRole === 'seller' ? <SellerDashboardScreen /> : <HomeScreen />;
+        return <HomeScreen />;
     }
   };
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { plants, mockOrders, getPlantsBySeller, getSellerById, plantEmojis } from '@/lib/data';
+import { plants, mockOrders, sellers, getPlantsBySeller, getSellerById, plantEmojis } from '@/lib/data';
 import { formatUSD, formatKHR } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,18 +60,34 @@ export default function SellerDashboardScreen() {
   const [orderFilter, setOrderFilter] = useState<'all' | OrderStatus>('all');
   const [searchPlants, setSearchPlants] = useState('');
   const [addPlantOpen, setAddPlantOpen] = useState(false);
+  const [addPlantSuccess, setAddPlantSuccess] = useState(false);
+  const [newPlant, setNewPlant] = useState({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
 
-  // Use seller-1 as default seller
-  const sellerId = 'seller-1';
+  const handleAddPlant = () => {
+    if (!newPlant.nameEn || !newPlant.price) return;
+    setAddPlantSuccess(true);
+    setNewPlant({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
+    setTimeout(() => {
+      setAddPlantSuccess(false);
+      setAddPlantOpen(false);
+    }, 1500);
+  };
+
+  // Find seller matching logged-in user ID, fallback to seller-1 for demo
+  // When backend is connected, replace with API call to /sellers/me
+  const matchedSeller = user?.id ? sellers.find(s => s.id === user.id) : null;
+  const sellerId = matchedSeller ? matchedSeller.id : 'seller-1';
   const seller = getSellerById(sellerId);
   const sellerPlants = getPlantsBySeller(sellerId);
   const filteredPlants = sellerPlants.filter(p =>
     !searchPlants || p.nameEn.toLowerCase().includes(searchPlants.toLowerCase()) || p.nameKh.includes(searchPlants)
   );
-  const filteredOrders = orders.filter(o => orderFilter === 'all' || o.status === orderFilter);
+  // Show only orders for this seller
+  const sellerOrders = orders.filter(o => o.sellerId === sellerId);
+  const filteredOrders = sellerOrders.filter(o => orderFilter === 'all' || o.status === orderFilter);
 
-  const todayOrders = orders.filter(o => o.status === 'pending').length;
-  const totalRevenue = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
+  const todayOrders = sellerOrders.filter(o => o.status === 'pending').length;
+  const totalRevenue = sellerOrders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
   const activeListings = sellerPlants.filter(p => p.isActive).length;
 
   const advanceOrderStatus = (orderId: string) => {
@@ -224,7 +240,7 @@ export default function SellerDashboardScreen() {
                 </Button>
               </div>
               <div className="space-y-3">
-                {orders.slice(0, 3).map(order => {
+                {sellerOrders.slice(0, 3).map(order => {
                   const config = statusConfig[order.status];
                   const StatusIcon = config.icon;
                   return (
@@ -306,40 +322,81 @@ export default function SellerDashboardScreen() {
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>{t(locale, 'addNewPlant')}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t(locale, 'fullName')} (EN)</label>
-                    <Input placeholder="Plant name in English" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t(locale, 'fullName')} (KH)</label>
-                    <Input placeholder="ឈ្មោះរុក្ខជាតិជាខ្មែរ" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">{locale === 'kh' ? 'ប្រភេទ' : 'Category'}</label>
-                      <Input placeholder="Indoor, Outdoor..." />
+                 </DialogHeader>
+                  {addPlantSuccess ? (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <div className="h-14 w-14 rounded-full bg-accent-green/10 flex items-center justify-center mb-3">
+                        <CheckCircle className="h-7 w-7 text-accent-green" />
+                      </div>
+                      <p className="font-semibold text-accent-green">
+                        {locale === 'kh' ? 'បានបន្ថែមរុក្ខជាតិដោយជោគជ័យ!' : 'Plant added successfully!'}
+                      </p>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">{locale === 'kh' ? 'តម្លៃ (USD)' : 'Price (USD)'}</label>
-                      <Input type="number" placeholder="0.00" />
+                  ) : (
+                    <div className="space-y-4 py-4">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">{t(locale, 'fullName')} (EN) <span className="text-destructive">*</span></label>
+                        <Input
+                          placeholder="Plant name in English"
+                          value={newPlant.nameEn}
+                          onChange={e => setNewPlant(p => ({ ...p, nameEn: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">{t(locale, 'fullName')} (KH)</label>
+                        <Input
+                          placeholder="ឈ្មោះរុក្ខជាតិជាខ្មែរ"
+                          value={newPlant.nameKh}
+                          onChange={e => setNewPlant(p => ({ ...p, nameKh: e.target.value }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">{locale === 'kh' ? 'ប្រភេទ' : 'Category'}</label>
+                          <Input
+                            placeholder="Indoor, Outdoor..."
+                            value={newPlant.category}
+                            onChange={e => setNewPlant(p => ({ ...p, category: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">{locale === 'kh' ? 'តម្លៃ (USD)' : 'Price (USD)'} <span className="text-destructive">*</span></label>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={newPlant.price}
+                            onChange={e => setNewPlant(p => ({ ...p, price: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">{t(locale, 'stock')}</label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={newPlant.stock}
+                            onChange={e => setNewPlant(p => ({ ...p, stock: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1.5 block">{t(locale, 'difficulty')}</label>
+                          <Input
+                            placeholder="Easy, Moderate..."
+                            value={newPlant.difficulty}
+                            onChange={e => setNewPlant(p => ({ ...p, difficulty: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full bg-accent-green hover:bg-forest-mid text-white"
+                        onClick={handleAddPlant}
+                        disabled={!newPlant.nameEn || !newPlant.price}
+                      >
+                        {t(locale, 'addPlant')}
+                      </Button>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">{t(locale, 'stock')}</label>
-                      <Input type="number" placeholder="0" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">{t(locale, 'difficulty')}</label>
-                      <Input placeholder="Easy, Moderate..." />
-                    </div>
-                  </div>
-                  <Button className="w-full bg-accent-green hover:bg-forest-mid text-white" onClick={() => setAddPlantOpen(false)}>
-                    {t(locale, 'addPlant')}
-                  </Button>
-                </div>
+                  )}
               </DialogContent>
             </Dialog>
           </div>

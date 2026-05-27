@@ -2,22 +2,35 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/ap
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
+
+  // Caller-provided headers always take priority over defaults.
+  // If the caller sets Content-Type themselves (e.g. form-urlencoded), we must NOT
+  // override it with application/json.
+  const callerHeaders = (options.headers as Record<string, string>) || {};
+  const isFormEncoded = callerHeaders['Content-Type'] === 'application/x-www-form-urlencoded';
+
+  const headers: Record<string, string> = {
+    // Only set the JSON default if the caller hasn't specified a Content-Type
+    ...(!isFormEncoded && !callerHeaders['Content-Type'] ? { 'Content-Type': 'application/json' } : {}),
+    ...callerHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    // Network-level failure (backend not reachable, CORS preflight failed, etc.)
+    throw new Error(
+      'Cannot connect to the server. Please make sure the backend is running on port 8000.'
+    );
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
   if (!response.ok) {
-    let errorMsg = 'An error occurred';
+    let errorMsg = `Error ${response.status}`;
     try {
       const errorData = await response.json();
       errorMsg = errorData.detail || errorMsg;

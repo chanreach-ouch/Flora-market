@@ -18,14 +18,32 @@ export default function AuthScreen() {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
+
+  const demoAccounts = [
+    { label: '🛒 Buyer',  email: 'buyer@demo.com',  role: 'buyer'  as const, color: 'text-accent-green' },
+    { label: '🏪 Seller', email: 'seller@demo.com', role: 'seller' as const, color: 'text-gold' },
+    { label: '🛡️ Admin',  email: 'admin@demo.com',  role: 'admin'  as const, color: 'text-blue-500' },
+  ];
+
+  const fillDemo = (acc: typeof demoAccounts[number]) => {
+    setLoginId(acc.email);
+    setPassword('demo123');
+    setRole(acc.role as 'buyer' | 'seller');
+    setError('');
+  };
 
   const handleLogin = async () => {
     if (!loginId) { setError(t(locale, 'fieldRequired')); return; }
     if (!password || password.length < 6) { setError(t(locale, 'passwordMin')); return; }
+    setLoading(true);
     try {
       await login(loginId, password, role);
     } catch (err: any) {
       setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,10 +53,13 @@ export default function AuthScreen() {
     if (!phone) { setError(t(locale, 'fieldRequired')); return; }
     if (!password || password.length < 6) { setError(t(locale, 'passwordMin')); return; }
     if (password !== confirmPassword) { setError(t(locale, 'passwordMismatch')); return; }
+    setLoading(true);
     try {
       await register(fullName, email, phone, password, role);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -196,8 +217,19 @@ export default function AuthScreen() {
             <Button
               className="w-full h-11 bg-accent-green hover:bg-forest-mid text-white"
               onClick={isLogin ? handleLogin : handleRegister}
+              disabled={loading}
             >
-              {isLogin ? t(locale, 'loginButton') : t(locale, 'registerButton')}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  {locale === 'kh' ? 'កំពុងដំណើរការ...' : 'Please wait...'}
+                </span>
+              ) : (
+                isLogin ? t(locale, 'loginButton') : t(locale, 'registerButton')
+              )}
             </Button>
           </div>
 
@@ -209,6 +241,38 @@ export default function AuthScreen() {
               {isLogin ? t(locale, 'noAccount') : t(locale, 'hasAccount')}
             </button>
           </div>
+
+          {/* Demo Accounts Panel */}
+          {isLogin && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowDemo(!showDemo)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 py-2"
+              >
+                <span>🚀</span>
+                <span>{showDemo ? 'Hide' : 'Show'} Demo Accounts</span>
+                <span>{showDemo ? '▲' : '▼'}</span>
+              </button>
+              {showDemo && (
+                <div className="mt-2 p-4 bg-muted/50 rounded-xl border border-dashed">
+                  <p className="text-xs text-muted-foreground mb-3 text-center">
+                    Click to auto-fill credentials · Password: <code className="font-mono">demo123</code>
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {demoAccounts.map(acc => (
+                      <button
+                        key={acc.email}
+                        onClick={() => fillDemo(acc)}
+                        className={`p-2 rounded-lg border hover:border-accent-green/50 bg-background text-xs font-medium transition-flora ${acc.color}`}
+                      >
+                        {acc.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
