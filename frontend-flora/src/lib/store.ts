@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { fetchApi } from './api';
 
 export type Locale = 'kh' | 'en';
-export type Screen = 'auth' | 'home' | 'browse' | 'profile' | 'plant-detail' | 'shop' | 'cart' | 'order-confirmation' | 'seller-dashboard' | 'admin' | 'personal-info' | 'notifications' | 'wishlist' | 'general-settings' | 'help-support' | 'privacy-policy' | 'terms-of-service';
+export type Screen = 'auth' | 'home' | 'browse' | 'profile' | 'plant-detail' | 'shop' | 'cart' | 'order-confirmation' | 'seller-dashboard' | 'admin' | 'personal-info' | 'notifications' | 'wishlist' | 'general-settings' | 'help-support' | 'privacy-policy' | 'terms-of-service' | 'my-listings';
 export type UserRole = 'buyer' | 'seller' | 'admin';
 
 interface CartItem {
@@ -40,6 +40,9 @@ interface AppState {
   // Wishlist
   wishlistItems: string[];
 
+  // Sell Modal
+  sellModalOpen: boolean;
+
   // Actions
   setScreen: (screen: Screen) => void;
   goBack: () => void;
@@ -61,6 +64,8 @@ interface AppState {
   addToWishlist: (plantId: string) => void;
   removeFromWishlist: (plantId: string) => void;
   isInWishlist: (plantId: string) => boolean;
+  openSellModal: () => void;
+  closeSellModal: () => void;
 }
 
 // localStorage persistence helpers
@@ -152,6 +157,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   darkMode: persisted?.darkMode ?? false,
   cartItems: persisted?.cartItems ?? [],
   wishlistItems: persisted?.wishlistItems ?? [],
+  sellModalOpen: false,
 
   setScreen: (screen) => set({ currentScreen: screen, previousScreen: get().currentScreen }),
   goBack: () => {
@@ -356,4 +362,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   isInWishlist: (plantId) => get().wishlistItems.includes(plantId),
+
+  openSellModal: () => set({ sellModalOpen: true }),
+  closeSellModal: () => set({ sellModalOpen: false }),
 }));

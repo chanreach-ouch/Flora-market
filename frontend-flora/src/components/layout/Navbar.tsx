@@ -35,6 +35,9 @@ import {
   HelpCircle,
   Bell,
   ChevronDown,
+  Package,
+  ShoppingBag,
+  Plus,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -43,6 +46,7 @@ export default function Navbar() {
     userRole, locale, toggleLocale,
     darkMode, toggleDarkMode,
     isAuthenticated, logout, getCartCount, wishlistItems,
+    openSellModal,
   } = useAppStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -146,7 +150,37 @@ export default function Navbar() {
                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-56">
+              {/* Seller Quick Actions */}
+              <div className="px-2 py-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {locale === 'kh' ? 'សកម្មភាពលក់' : 'Seller Actions'}
+                </p>
+              </div>
+              <DropdownMenuItem onClick={() => openSellModal()}>
+                <Plus className="mr-2 h-4 w-4 text-accent-green" />
+                <span className="font-medium">{locale === 'kh' ? 'លក់រុក្ខជាតិ' : 'Sell a Plant'}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setScreen('my-listings')}>
+                <Package className="mr-2 h-4 w-4" />
+                {locale === 'kh' ? 'រុក្ខជាតិរបស់ខ្ញុំ' : 'My Listings'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setScreen('seller-dashboard')}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                {locale === 'kh' ? 'ផ្ទាំងគ្រប់គ្រង' : 'Seller Dashboard'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              
+              {/* Buyer Actions */}
+              <div className="px-2 py-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {locale === 'kh' ? 'គណនី' : 'Account'}
+                </p>
+              </div>
+              <DropdownMenuItem onClick={() => setScreen('cart')}>
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                {locale === 'kh' ? 'ការបញ្ជាទិញរបស់ខ្ញុំ' : 'My Orders'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setScreen('profile')}>
                 <User className="mr-2 h-4 w-4" />
                 {t(locale, 'profile')}

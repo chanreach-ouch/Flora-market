@@ -21,9 +21,12 @@ import GeneralSettingsScreen from '@/components/screens/GeneralSettingsScreen';
 import HelpSupportScreen from '@/components/screens/HelpSupportScreen';
 import PrivacyPolicyScreen from '@/components/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '@/components/screens/TermsOfServiceScreen';
+import MyListingsScreen from '@/components/screens/MyListingsScreen';
+import SellPlantModal from '@/components/modals/SellPlantModal';
+import { ToastContainer } from '@/components/ui/toast-custom';
 
 export default function Home() {
-  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode } = useAppStore();
+  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode, sellModalOpen, closeSellModal } = useAppStore();
 
   // Apply dark mode on mount
   useEffect(() => {
@@ -80,6 +83,8 @@ export default function Home() {
         return <PrivacyPolicyScreen />;
       case 'terms-of-service':
         return <TermsOfServiceScreen />;
+      case 'my-listings':
+        return <MyListingsScreen />;
       case 'home':
       default:
         return userRole === 'seller' ? <SellerDashboardScreen /> : <HomeScreen />;
@@ -103,6 +108,12 @@ export default function Home() {
         </AnimatePresence>
       </main>
       <Footer />
+      
+      {/* Global Sell Plant Modal */}
+      <SellPlantModal isOpen={sellModalOpen} onClose={closeSellModal} />
+      
+      {/* Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 }
