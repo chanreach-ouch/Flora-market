@@ -12,15 +12,15 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '001_add_phone_to_users'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = '475e9da7ba67'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add phone column to users table (nullable, no default needed)
-    op.add_column('users', sa.Column('phone', sa.String(50), nullable=True))
+    # Column already applied in initial DB setup — no-op
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column('users', 'phone')
+    pass

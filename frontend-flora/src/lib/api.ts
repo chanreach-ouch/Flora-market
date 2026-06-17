@@ -288,5 +288,8 @@ export async function apiFetchSellerOrders(): Promise<MockOrder[]> {
 }
 
 export async function apiUpdateOrderStatus(orderId: string, status: string): Promise<void> {
-  await fetchApi(`/orders/${orderId}/status?status=${status}`, { method: 'PATCH' });
+  await fetchApi(`/orders/${orderId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
 }

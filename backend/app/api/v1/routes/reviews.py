@@ -14,15 +14,27 @@ router = APIRouter()
 
 @router.get("/plant/{plant_id}", response_model=List[ReviewResponse])
 async def get_reviews_by_plant(plant_id: str, db: AsyncSession = Depends(deps.get_db)):
-    """Get all reviews for a specific plant."""
     result = await db.execute(select(Review).where(Review.plant_id == plant_id))
     return result.scalars().all()
 
 
 @router.get("/seller/{seller_id}", response_model=List[ReviewResponse])
 async def get_reviews_by_seller(seller_id: str, db: AsyncSession = Depends(deps.get_db)):
-    """Get all reviews for a specific seller."""
     result = await db.execute(select(Review).where(Review.seller_id == seller_id))
+    return result.scalars().all()
+
+
+@router.get("/", response_model=List[ReviewResponse])
+async def list_all_reviews(
+    skip: int = 0,
+    limit: int = 200,
+    db: AsyncSession = Depends(deps.get_db),
+    _admin: User = Depends(deps.get_current_admin),
+):
+    """List all reviews (admin only)."""
+    result = await db.execute(
+        select(Review).order_by(Review.created_at.desc()).offset(skip).limit(limit)
+    )
     return result.scalars().all()
 
 
@@ -33,7 +45,6 @@ async def create_review(
     current_user: User = Depends(deps.get_current_user),
 ):
     """Submit a review for a plant/seller."""
-    # Validate plant exists
     result = await db.execute(select(Plant).where(Plant.id == review_in.plant_id))
     plant = result.scalars().first()
     if not plant:
@@ -49,12 +60,12 @@ async def create_review(
     )
     db.add(review)
 
-    # Update plant rating
+    # Recalculate plant rating
     result = await db.execute(select(Review).where(Review.plant_id == review_in.plant_id))
-    all_reviews = result.scalars().all()
-    total_rating = sum(r.rating for r in all_reviews) + review_in.rating
-    plant.review_count = len(all_reviews) + 1
-    plant.rating = round(total_rating / plant.review_count, 1)
+    existing = result.scalars().all()
+    total = sum(r.rating for r in existing) + review_in.rating
+    plant.review_count = len(existing) + 1
+    plant.rating = round(total / plant.review_count, 1)
 
     await db.commit()
     await db.refresh(review)

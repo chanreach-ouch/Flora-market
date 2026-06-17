@@ -73,9 +73,10 @@ export async function updateOrderStatus(orderId: string, status: string) {
   });
 }
 
-// Plants
+// Plants — include_inactive=true so admin sees all plants, not just active ones
 export async function getAllPlants(params?: { category?: string; skip?: number; limit?: number }) {
   const q = new URLSearchParams();
+  q.set('include_inactive', 'true');
   if (params?.category) q.set('category', params.category);
   if (params?.skip !== undefined) q.set('skip', String(params.skip));
   if (params?.limit !== undefined) q.set('limit', String(params.limit));
@@ -92,4 +93,9 @@ export async function getReviews(params?: { skip?: number; limit?: number }) {
   if (params?.skip !== undefined) q.set('skip', String(params.skip));
   if (params?.limit !== undefined) q.set('limit', String(params.limit));
   return fetchApi(`/reviews/?${q}`);
+}
+
+// Platform stats / analytics
+export async function getPlatformStats() {
+  return fetchApi('/stats/');
 }

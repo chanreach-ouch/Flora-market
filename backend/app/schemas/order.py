@@ -14,6 +14,10 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
 
 
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
+
+
 class OrderItemResponse(BaseModel):
     id: str
     plant_id: str
