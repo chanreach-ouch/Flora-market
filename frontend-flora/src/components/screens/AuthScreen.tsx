@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AuthScreen() {
   const { locale, login, register } = useAppStore();
@@ -15,6 +16,8 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +42,7 @@ export default function AuthScreen() {
     if (password !== confirmPassword) { setError(t(locale, 'passwordMismatch')); return; }
     setLoading(true);
     try {
-      await register(fullName, email, phone, password, 'buyer');
+      await register(fullName, email, phone, password, role);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -59,48 +62,130 @@ export default function AuthScreen() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-forest via-forest-mid to-accent-green relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 text-9xl">🌿</div>
-          <div className="absolute bottom-20 right-20 text-8xl">🌴</div>
-          <div className="absolute top-1/2 left-1/3 text-7xl">🌺</div>
-          <div className="absolute top-1/3 right-1/4 text-6xl">🪴</div>
+
+      {/* Left panel — warm plant theme */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-14"
+        style={{ background: 'linear-gradient(145deg, #1a3a2a 0%, #2d6a4f 60%, #40916c 100%)' }}>
+
+        {/* Decorative plant blobs */}
+        <div className="absolute inset-0">
+          <div className="absolute -top-10 -right-10 h-72 w-72 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #52b788, transparent)' }} />
+          <div className="absolute bottom-0 -left-10 h-96 w-96 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #95d5b2, transparent)' }} />
         </div>
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h1 className="text-5xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-            {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
-          </h1>
-          <p className="text-xl text-pale-green/80 mb-8">
-            {locale === 'kh'
-              ? 'ស្វែងរករុក្ខជាតិល្អឥតខ្ចោះថ្ងៃនេះ'
-              : "Cambodia's trusted plant marketplace — buy and sell with ease."}
-          </p>
-          <div className="space-y-4 text-pale-green/70">
-            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'ទិញ និងលក់ក្នុងគណនីតែមួយ' : 'Buy and sell with one account'}</span></div>
-            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'អ្នកលក់បានផ្ទៀងផ្ទាត់' : 'Verified sellers'}</span></div>
-            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'ទូទាត់សុវត្ថិភាព' : 'Secure payments'}</span></div>
+
+        {/* Floating emojis */}
+        <div className="absolute inset-0 select-none pointer-events-none">
+          <span className="absolute top-16 left-16 text-7xl opacity-20">🌿</span>
+          <span className="absolute top-1/3 right-16 text-6xl opacity-15">🌺</span>
+          <span className="absolute bottom-24 left-24 text-5xl opacity-20">🌴</span>
+          <span className="absolute top-1/2 left-1/3 text-4xl opacity-10">🪴</span>
+          <span className="absolute bottom-1/3 right-24 text-5xl opacity-15">🌸</span>
+        </div>
+
+        {/* Top logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <span className="text-3xl">🌿</span>
+          <div>
+            <p className="text-white font-bold text-lg leading-none" style={{ fontFamily: 'Playfair Display, serif' }}>
+              {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
+            </p>
+            <p className="text-pale-green/60 text-[11px] mt-0.5">
+              {locale === 'kh' ? 'ផ្សារពណ៌បៃតង' : "Cambodia's Green Marketplace"}
+            </p>
           </div>
+        </div>
+
+        {/* Center content */}
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold text-white mb-4 leading-snug" style={{ fontFamily: 'Playfair Display, serif' }}>
+            {locale === 'kh'
+              ? 'ស្វែងរករុក្ខជាតិ\nល្អឥតខ្ចោះ'
+              : 'Discover Beautiful\nPlants'}
+          </h1>
+          <p className="text-pale-green/70 text-sm leading-relaxed mb-8 max-w-xs">
+            {locale === 'kh'
+              ? 'ផ្សារបៃតងនៅកម្ពុជា ភ្ជាប់ទំនាក់ទំនងរវាងបន្លែ និងអ្នកស្រឡាញ់ធម្មជាតិ'
+              : "Cambodia's trusted plant marketplace — connecting verified nurseries with plant lovers across the country."}
+          </p>
+          <div className="space-y-3">
+            {[
+              { emoji: '✅', en: 'Verified local nurseries', kh: 'ហាងបៃតងបានផ្ទៀងផ្ទាត់' },
+              { emoji: '💳', en: 'ABA Pay & Wing Money', kh: 'ទូទាត់ ABA & Wing' },
+              { emoji: '🚚', en: 'Delivery across Cambodia', kh: 'ដឹកជញ្ជូនទូទាំងប្រទេស' },
+            ].map(item => (
+              <div key={item.en} className="flex items-center gap-3">
+                <span className="text-lg">{item.emoji}</span>
+                <span className="text-pale-green/70 text-sm">{locale === 'kh' ? item.kh : item.en}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom stats */}
+        <div className="relative z-10 flex gap-6">
+          {[
+            { value: '500+', label: locale === 'kh' ? 'រុក្ខជាតិ' : 'Plants' },
+            { value: '38', label: locale === 'kh' ? 'អ្នកលក់' : 'Sellers' },
+            { value: '1.2k', label: locale === 'kh' ? 'អ្នកប្រើ' : 'Users' },
+          ].map(stat => (
+            <div key={stat.label}>
+              <p className="text-white text-xl font-bold">{stat.value}</p>
+              <p className="text-pale-green/50 text-xs">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Right Panel */}
+      {/* Right panel — form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
+
+          {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <span className="text-4xl">🌿</span>
-            <h1 className="text-2xl font-bold text-forest dark:text-pale-green">
+            <span className="text-3xl">🌿</span>
+            <h1 className="text-xl font-bold text-forest dark:text-pale-green" style={{ fontFamily: 'Playfair Display, serif' }}>
               {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
             </h1>
           </div>
 
-          <h2 className="text-2xl font-bold mb-2">
+          <h2 className="text-2xl font-bold mb-1">
             {isLogin ? t(locale, 'welcomeBack') : t(locale, 'createAccount')}
           </h2>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground text-sm mb-6">
             {isLogin ? t(locale, 'loginSubtitle') : t(locale, 'registerSubtitle')}
           </p>
+
+          {/* Role selector — register only */}
+          {!isLogin && (
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <button
+                onClick={() => setRole('buyer')}
+                className={`p-3.5 rounded-xl border-2 transition-all text-center ${
+                  role === 'buyer'
+                    ? 'border-accent-green bg-pale-green/40 dark:bg-forest-mid/20'
+                    : 'border-border hover:border-accent-green/40'
+                }`}
+              >
+                <div className="text-2xl mb-1">🛒</div>
+                <div className="font-semibold text-sm">{t(locale, 'registerAsBuyer')}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{t(locale, 'buyerDescription')}</div>
+              </button>
+              <button
+                onClick={() => setRole('seller')}
+                className={`p-3.5 rounded-xl border-2 transition-all text-center ${
+                  role === 'seller'
+                    ? 'border-gold bg-cream/50 dark:bg-forest-mid/20'
+                    : 'border-border hover:border-gold/40'
+                }`}
+              >
+                <div className="text-2xl mb-1">🏪</div>
+                <div className="font-semibold text-sm">{t(locale, 'registerAsSeller')}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{t(locale, 'sellerDescription')}</div>
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">{error}</div>
@@ -114,6 +199,7 @@ export default function AuthScreen() {
                   value={fullName}
                   onChange={e => { setFullName(e.target.value); setError(''); }}
                   placeholder={locale === 'kh' ? 'ឈ្មោះពេញរបស់អ្នក' : 'Your full name'}
+                  className="h-10"
                 />
               </div>
             )}
@@ -125,6 +211,7 @@ export default function AuthScreen() {
                   value={loginId}
                   onChange={e => { setLoginId(e.target.value); setError(''); }}
                   placeholder={locale === 'kh' ? 'អ៊ីមែល ឬ លេខទូរស័ព្ទ' : 'Email or phone number'}
+                  className="h-10"
                 />
               </div>
             ) : (
@@ -136,6 +223,7 @@ export default function AuthScreen() {
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
                     placeholder="you@example.com"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -144,6 +232,7 @@ export default function AuthScreen() {
                     value={phone}
                     onChange={e => { setPhone(e.target.value); setError(''); }}
                     placeholder="+855 9X XXX XXX"
+                    className="h-10"
                   />
                 </div>
               </>
@@ -151,12 +240,22 @@ export default function AuthScreen() {
 
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t(locale, 'password')}</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="••••••"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="••••••"
+                  className="h-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {!isLogin && (
@@ -167,12 +266,13 @@ export default function AuthScreen() {
                   value={confirmPassword}
                   onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
                   placeholder="••••••"
+                  className="h-10"
                 />
               </div>
             )}
 
             <Button
-              className="w-full h-11 bg-accent-green hover:bg-forest-mid text-white"
+              className="w-full h-11 bg-forest hover:bg-forest-mid text-white font-semibold text-sm"
               onClick={isLogin ? handleLogin : handleRegister}
               disabled={loading}
             >
@@ -180,7 +280,7 @@ export default function AuthScreen() {
             </Button>
           </div>
 
-          <div className="text-center mt-6">
+          <div className="text-center mt-5">
             <button
               onClick={() => { setIsLogin(!isLogin); setError(''); }}
               className="text-sm text-accent-green hover:underline"
@@ -188,6 +288,10 @@ export default function AuthScreen() {
               {isLogin ? t(locale, 'noAccount') : t(locale, 'hasAccount')}
             </button>
           </div>
+
+          <p className="text-center text-[11px] text-muted-foreground mt-6">
+            🌿 Flora Market · {locale === 'kh' ? 'ផ្សារបៃតងកម្ពុជា' : "Cambodia's Green Marketplace"}
+          </p>
         </div>
       </div>
     </div>

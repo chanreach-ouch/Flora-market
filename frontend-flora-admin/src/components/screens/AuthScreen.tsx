@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Shield, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 export default function AuthScreen() {
-  const { locale, login, register } = useAppStore();
+  const { login, register } = useAppStore();
   const [isLogin, setIsLogin] = useState(true);
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
@@ -16,201 +15,241 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!loginId) { setError(t(locale, 'fieldRequired')); return; }
-    if (!password || password.length < 6) { setError(t(locale, 'passwordMin')); return; }
+    if (!loginId) { setError('Email is required'); return; }
+    if (!password || password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    setLoading(true);
     try {
-      // Force admin role for the admin panel
-      await login(loginId, password, 'admin' as any);
+      await login(loginId, password);
     } catch (err: any) {
       setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    if (!fullName) { setError(t(locale, 'fieldRequired')); return; }
-    if (!email) { setError(t(locale, 'fieldRequired')); return; }
-    if (!phone) { setError(t(locale, 'fieldRequired')); return; }
-    if (!password || password.length < 6) { setError(t(locale, 'passwordMin')); return; }
-    if (password !== confirmPassword) { setError(t(locale, 'passwordMismatch')); return; }
+    if (!fullName || !email || !phone) { setError('All fields are required'); return; }
+    if (!password || password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    setLoading(true);
     try {
-      // Force admin role
-      await register(fullName, email, phone, password, 'admin' as any);
+      await register(fullName, email, phone, password);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-forest via-forest-mid to-accent-green relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 text-9xl">🌿</div>
-          <div className="absolute bottom-20 right-20 text-8xl">🌴</div>
-          <div className="absolute top-1/2 left-1/3 text-7xl">🌺</div>
-          <div className="absolute top-1/3 right-1/4 text-6xl">🪴</div>
+    <div className="min-h-screen flex bg-slate-950">
+
+      {/* Left panel — dark brand panel */}
+      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden flex-col justify-between p-12"
+        style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
+
+        {/* Grid overlay */}
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+
+        {/* Glow accent */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-80 w-80 rounded-full blur-3xl opacity-10"
+          style={{ background: 'radial-gradient(circle, #52b788, transparent)' }} />
+
+        {/* Top logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <Shield className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-none">Flora Admin</p>
+            <p className="text-slate-400 text-[10px] mt-0.5">Management Portal</p>
+          </div>
         </div>
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h1 className="text-5xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-            {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
+
+        {/* Center content */}
+        <div className="relative z-10">
+          <div className="h-16 w-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
+            <Lock className="h-8 w-8 text-slate-300" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
+            Internal<br />Management<br />System
           </h1>
-          <p className="text-xl text-pale-green/80 mb-8">
-            {locale === 'kh'
-              ? 'ស្វែងរករុក្ខជាតិល្អឥតខ្ចោះថ្ងៃនេះ'
-              : "Cambodia's trusted plant marketplace — connecting verified nurseries with plant lovers."}
+          <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">
+            Restricted access for authorized Flora Market administrators only. All sessions are monitored and logged.
           </p>
-          <div className="space-y-4 text-pale-green/70">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'តម្លៃថេរ គ្មានការចរចា' : 'Fixed prices, no negotiation'}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'អ្នកលក់បានផ្ទៀងផ្ទាត់' : 'Verified sellers'}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'ទូទាត់សុវត្ថិភាព' : 'Secure payments'}</span>
-            </div>
+          <div className="space-y-3">
+            {['Platform analytics & revenue', 'Seller verification & moderation', 'Order & user management'].map(item => (
+              <div key={item} className="flex items-center gap-2.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                <span className="text-slate-400 text-xs">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom badge */}
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+            <AlertTriangle className="h-3 w-3 text-amber-400" />
+            <span className="text-amber-400 text-[10px] font-medium">Authorized Personnel Only</span>
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-background">
-        <div className="w-full max-w-md">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <span className="text-4xl">🌿</span>
-            <h1 className="text-2xl font-bold text-forest dark:text-pale-green">
-              {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
-            </h1>
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-slate-900">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile header */}
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <div className="h-12 w-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-3">
+              <Shield className="h-6 w-6 text-slate-300" />
+            </div>
+            <p className="text-white font-bold text-lg">Flora Admin Portal</p>
+            <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="h-3 w-3 text-amber-400" />
+              <span className="text-amber-400 text-[10px] font-medium">Authorized Personnel Only</span>
+            </div>
           </div>
 
-          <h2 className="text-2xl font-bold mb-2">
-            {isLogin ? t(locale, 'welcomeBack') : t(locale, 'createAccount')}
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            {isLogin ? t(locale, 'loginSubtitle') : t(locale, 'registerSubtitle')}
-          </p>
-
-          {/* Role Selector */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              onClick={() => setRole('buyer')}
-              className={`p-4 rounded-xl border-2 transition-flora text-center ${
-                role === 'buyer'
-                  ? 'border-accent-green bg-pale-green/50 dark:bg-forest-mid/30'
-                  : 'border-border hover:border-accent-green/50'
-              }`}
-            >
-              <div className="text-2xl mb-1">🛒</div>
-              <div className="font-medium text-sm">{t(locale, 'registerAsBuyer')}</div>
-              <div className="text-xs text-muted-foreground">{t(locale, 'buyerDescription')}</div>
-            </button>
-            <button
-              onClick={() => setRole('seller')}
-              className={`p-4 rounded-xl border-2 transition-flora text-center ${
-                role === 'seller'
-                  ? 'border-gold bg-cream/50 dark:bg-forest-mid/30'
-                  : 'border-border hover:border-gold/50'
-              }`}
-            >
-              <div className="text-2xl mb-1">🏪</div>
-              <div className="font-medium text-sm">{t(locale, 'registerAsSeller')}</div>
-              <div className="text-xs text-muted-foreground">{t(locale, 'sellerDescription')}</div>
-            </button>
+          {/* Form header */}
+          <div className="mb-7">
+            <h2 className="text-xl font-bold text-white">
+              {isLogin ? 'Sign in to Admin Portal' : 'Create Admin Account'}
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">
+              {isLogin ? 'Enter your admin credentials to continue' : 'Admin accounts require super_admin approval'}
+            </p>
           </div>
 
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">{error}</div>
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg mb-5">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
           <div className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">{t(locale, 'fullName')}</label>
+                <label className="text-xs font-medium text-slate-300 mb-1.5 block">Full Name</label>
                 <Input
                   value={fullName}
                   onChange={e => { setFullName(e.target.value); setError(''); }}
-                  placeholder={locale === 'kh' ? 'ឈ្មោះពេញរបស់អ្នក' : 'Your full name'}
+                  placeholder="Your full name"
+                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10"
                 />
               </div>
             )}
 
             {isLogin ? (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">{t(locale, 'emailOrPhone')}</label>
+                <label className="text-xs font-medium text-slate-300 mb-1.5 block">Email Address</label>
                 <Input
+                  type="email"
                   value={loginId}
                   onChange={e => { setLoginId(e.target.value); setError(''); }}
-                  placeholder={locale === 'kh' ? 'អ៊ីមែល ឬ លេខទូរស័ព្ទ' : 'Email or phone number'}
+                  placeholder="admin@flora.com"
+                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10"
                 />
               </div>
             ) : (
               <>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t(locale, 'email')}</label>
+                  <label className="text-xs font-medium text-slate-300 mb-1.5 block">Email</label>
                   <Input
                     type="email"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
-                    placeholder="you@example.com"
+                    placeholder="admin@flora.com"
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t(locale, 'phone')}</label>
+                  <label className="text-xs font-medium text-slate-300 mb-1.5 block">Phone</label>
                   <Input
                     value={phone}
                     onChange={e => { setPhone(e.target.value); setError(''); }}
                     placeholder="+855 9X XXX XXX"
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10"
                   />
                 </div>
               </>
             )}
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t(locale, 'password')}</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="••••••"
-              />
+              <label className="text-xs font-medium text-slate-300 mb-1.5 block">Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {!isLogin && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">{t(locale, 'confirmPassword')}</label>
+                <label className="text-xs font-medium text-slate-300 mb-1.5 block">Confirm Password</label>
                 <Input
                   type="password"
                   value={confirmPassword}
                   onChange={e => { setConfirmPassword(e.target.value); setError(''); }}
-                  placeholder="••••••"
+                  placeholder="••••••••"
+                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-500 h-10"
                 />
               </div>
             )}
 
             <Button
-              className="w-full h-11 bg-accent-green hover:bg-forest-mid text-white"
+              className="w-full h-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold mt-1 disabled:opacity-50"
               onClick={isLogin ? handleLogin : handleRegister}
+              disabled={loading}
             >
-              {isLogin ? t(locale, 'loginButton') : t(locale, 'registerButton')}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Authenticating...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  {isLogin ? 'Sign In' : 'Create Account'}
+                </span>
+              )}
             </Button>
           </div>
 
-          <div className="text-center mt-6">
+          <div className="text-center mt-5">
             <button
               onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="text-sm text-accent-green hover:underline"
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
             >
-              {isLogin ? t(locale, 'noAccount') : t(locale, 'hasAccount')}
+              {isLogin ? "Don't have an admin account? Register" : 'Already have an account? Sign in'}
             </button>
           </div>
+
+          <p className="text-center text-[10px] text-slate-600 mt-6">
+            Flora Market · Admin Portal · All access is logged
+          </p>
         </div>
       </div>
     </div>
