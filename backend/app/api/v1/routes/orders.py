@@ -115,8 +115,12 @@ async def place_order(
         seller.total_orders += 1
 
     await db.commit()
-    await db.refresh(order)
-    return order
+
+    # Reload with items eagerly to avoid async lazy-load error in response serialization
+    result = await db.execute(
+        select(Order).where(Order.id == order.id).options(selectinload(Order.items))
+    )
+    return result.scalars().first()
 
 
 @router.patch("/{order_id}/status", response_model=OrderResponse)
