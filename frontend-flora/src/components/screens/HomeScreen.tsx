@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { plants, categories, plantEmojis, getPlantById, getSellerById, getNewArrivals, getPlantsByCategory } from '@/lib/data';
+import { plants as mockPlants, categories, plantEmojis, getSellerById } from '@/lib/data';
+import type { MockPlant } from '@/lib/data';
+import { apiFetchPlants, apiFetchSellerById } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,14 +16,21 @@ export default function HomeScreen() {
   const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist, setScreen } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [allPlants, setAllPlants] = useState<MockPlant[]>(mockPlants);
 
-  const filteredPlants = getPlantsByCategory(selectedCategory).filter(p => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q) || p.tagline.toLowerCase().includes(q);
-  });
+  useEffect(() => {
+    apiFetchPlants().then(setAllPlants).catch(() => setAllPlants(mockPlants));
+  }, []);
 
-  const newArrivals = getNewArrivals();
+  const filteredPlants = allPlants
+    .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
+    .filter(p => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q) || p.tagline.toLowerCase().includes(q);
+    });
+
+  const newArrivals = allPlants.filter(p => p.isNew);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -96,10 +105,16 @@ export default function HomeScreen() {
   );
 }
 
-function PlantCard({ plant }: { plant: any }) {
+function PlantCard({ plant }: { plant: MockPlant }) {
   const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const seller = getSellerById(plant.sellerId);
+  const [seller, setSeller] = useState(getSellerById(plant.sellerId) || null);
   const wishlisted = isInWishlist(plant.id);
+
+  useEffect(() => {
+    if (!getSellerById(plant.sellerId)) {
+      apiFetchSellerById(plant.sellerId).then(setSeller).catch(() => {});
+    }
+  }, [plant.sellerId]);
 
   return (
     <Card className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">

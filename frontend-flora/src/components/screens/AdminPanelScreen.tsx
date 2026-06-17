@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { sellers, mockOrders } from '@/lib/data';
+import { sellers as mockSellers, mockOrders } from '@/lib/data';
+import type { MockSeller } from '@/lib/data';
+import { apiFetchSellers } from '@/lib/api';
 import { formatUSD } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,11 @@ import {
 export default function AdminPanelScreen() {
   const { locale } = useAppStore();
   const [sellerSearch, setSellerSearch] = useState('');
+  const [sellers, setSellers] = useState<MockSeller[]>(mockSellers);
+
+  useEffect(() => {
+    apiFetchSellers().then(setSellers).catch(() => setSellers(mockSellers));
+  }, []);
 
   const totalSellers = sellers.length;
   const totalOrders = mockOrders.length;

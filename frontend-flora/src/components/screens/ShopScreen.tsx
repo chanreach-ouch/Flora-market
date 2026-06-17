@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { getSellerById, getPlantsBySeller, getReviewsBySeller, plantEmojis } from '@/lib/data';
+import type { MockPlant, MockSeller, MockReview } from '@/lib/data';
+import { apiFetchSellerById, apiFetchPlantsBySeller, apiFetchReviewsBySeller } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,13 +13,25 @@ import { Star, MapPin, ShoppingCart, Heart, Calendar, CheckCircle, ArrowLeft } f
 
 export default function ShopScreen() {
   const { selectedSellerId, locale, userRole, goBack, selectPlant, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const seller = getSellerById(selectedSellerId || 'seller-1');
+
+  const mockSeller = getSellerById(selectedSellerId || 'seller-1');
+  const [seller, setSeller] = useState<MockSeller | undefined>(mockSeller);
+  const [sellerPlants, setSellerPlants] = useState<MockPlant[]>(mockSeller ? getPlantsBySeller(mockSeller.id) : []);
+  const [sellerReviews, setSellerReviews] = useState<MockReview[]>(mockSeller ? getReviewsBySeller(mockSeller?.id || '') : []);
   const [activeTab, setActiveTab] = useState<'plants' | 'reviews' | 'about'>('plants');
 
-  if (!seller) return null;
+  useEffect(() => {
+    if (!selectedSellerId) return;
+    apiFetchSellerById(selectedSellerId)
+      .then(s => {
+        setSeller(s);
+        apiFetchPlantsBySeller(s.id).then(setSellerPlants).catch(() => {});
+        apiFetchReviewsBySeller(s.id).then(setSellerReviews).catch(() => {});
+      })
+      .catch(() => {});
+  }, [selectedSellerId]);
 
-  const sellerPlants = getPlantsBySeller(seller.id);
-  const sellerReviews = getReviewsBySeller(seller.id);
+  if (!seller) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">

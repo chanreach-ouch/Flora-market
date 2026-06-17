@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
-import { t } from '@/lib/i18n';
+import { fetchApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,30 @@ interface SellPlantModalProps {
 export default function SellPlantModal({ isOpen, onClose, editingPlant }: SellPlantModalProps) {
   const { locale } = useAppStore();
   const [isClosing, setIsClosing] = useState(false);
+  const scrollY = useRef(0);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen && !isClosing) {
+      scrollY.current = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY.current}px`;
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY.current);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [isOpen, isClosing]);
   
   const [formData, setFormData] = useState({
     nameEn: '',
@@ -126,25 +150,63 @@ export default function SellPlantModal({ isOpen, onClose, editingPlant }: SellPl
     }, 300);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
+
     if (!formData.nameEn || !formData.price || !formData.category) {
       showToast('error', locale === 'kh' ? 'សូមបំពេញព័ត៌មានចាំបាច់' : 'Please fill in required fields');
       return;
     }
 
-    // TODO: API call to create/update plant
-    const action = editingPlant ? 'updated' : 'listed';
-    showToast('success', locale === 'kh' 
-      ? `រុក្ខជាតិត្រូវបាន${action === 'updated' ? 'កែប្រែ' : 'បញ្ចូល'}ដោយជោគជ័យ!`
-      : `Plant ${action} successfully!`
-    );
-    
-    handleClose();
-    // Navigate to seller dashboard
-    // useAppStore.getState().setScreen('seller-dashboard');
+    // Demo accounts (buyer@demo.com etc.) have no real JWT token — block mutations with a helpful message.
+    if (!localStorage.getItem('token')) {
+      showToast('error', locale === 'kh'
+        ? 'គណនីសាកល្បងមានតែមើលប៉ុណ្ណោះ។ សូមចុះឈ្មោះគណនីពិតដើម្បីបោះផ្សាយរុក្ខជាតិ'
+        : 'Demo accounts are view-only. Please register a real account to list plants.'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name_en: formData.nameEn,
+        name_kh: formData.nameKh || null,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        stock: formData.stock ? parseInt(formData.stock) : 0,
+        tagline: formData.tagline || null,
+        tagline_kh: formData.taglineKh || null,
+        water_freq: formData.waterFreq || null,
+        water_freq_kh: formData.waterFreqKh || null,
+        light_req: formData.lightReq || null,
+        light_req_kh: formData.lightReqKh || null,
+        temp_range: formData.tempRange || null,
+        difficulty: formData.difficulty || null,
+        difficulty_kh: formData.difficultyKh || null,
+        images: uploadedImages,
+      };
+
+      if (editingPlant) {
+        await fetchApi(`/plants/${editingPlant.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      } else {
+        await fetchApi('/plants/', { method: 'POST', body: JSON.stringify(payload) });
+      }
+
+      const action = editingPlant ? 'updated' : 'listed';
+      showToast('success', locale === 'kh'
+        ? `រុក្ខជាតិត្រូវបាន${action === 'updated' ? 'កែប្រែ' : 'បញ្ចូល'}ដោយជោគជ័យ!`
+        : `Plant ${action} successfully!`
+      );
+      handleClose();
+      useAppStore.getState().setScreen('my-listings');
+    } catch (err: any) {
+      showToast('error', err?.message || (locale === 'kh' ? 'មានបញ្ហាកើតឡើង' : 'Something went wrong'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen && !isClosing) return null;
@@ -469,11 +531,14 @@ export default function SellPlantModal({ isOpen, onClose, editingPlant }: SellPl
               </Button>
               <Button
                 type="submit"
-                className="flex-1 bg-accent-green hover:bg-forest-mid text-white"
+                disabled={isSubmitting}
+                className="flex-1 bg-accent-green hover:bg-forest-mid text-white disabled:opacity-60"
               >
-                {editingPlant 
-                  ? (locale === 'kh' ? 'រក្សាទុកការផ្លាស់ប្តូរ' : 'Save Changes')
-                  : (locale === 'kh' ? 'បញ្ចូលរុក្ខជាតិ' : 'List Plant')
+                {isSubmitting
+                  ? (locale === 'kh' ? 'កំពុងរក្សាទុក...' : 'Saving...')
+                  : editingPlant
+                    ? (locale === 'kh' ? 'រក្សាទុកការផ្លាស់ប្តូរ' : 'Save Changes')
+                    : (locale === 'kh' ? 'បញ្ចូលរុក្ខជាតិ' : 'List Plant')
                 }
               </Button>
             </div>
@@ -481,12 +546,6 @@ export default function SellPlantModal({ isOpen, onClose, editingPlant }: SellPl
         </div>
       </div>
 
-      {/* Lock body scroll when modal is open */}
-      <style jsx global>{`
-        body {
-          overflow: ${isOpen && !isClosing ? 'hidden' : 'auto'};
-        }
-      `}</style>
     </>
   );
 }

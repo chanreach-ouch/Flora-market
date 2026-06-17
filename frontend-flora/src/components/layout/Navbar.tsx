@@ -42,8 +42,8 @@ import {
 
 export default function Navbar() {
   const {
-    currentScreen, setScreen, goBack,
-    userRole, locale, toggleLocale,
+    currentScreen, setScreen,
+    userRole, isAdmin, locale, toggleLocale,
     darkMode, toggleDarkMode,
     isAuthenticated, logout, getCartCount, wishlistItems,
     openSellModal,
@@ -55,26 +55,13 @@ export default function Navbar() {
   const cartCount = getCartCount();
   const wishlistCount = wishlistItems.length;
 
-  const buyerLinks = [
+  // All users get the same nav — C2C, everyone can buy and sell
+  const navLinks = [
     { icon: Home, label: t(locale, 'home'), screen: 'home' as const },
     { icon: Search, label: t(locale, 'browse'), screen: 'browse' as const },
     { icon: ShoppingCart, label: t(locale, 'myCart'), screen: 'cart' as const, badge: cartCount },
     { icon: Heart, label: t(locale, 'wishlistTitle'), screen: 'wishlist' as const, badge: wishlistCount },
   ];
-
-  const sellerLinks = [
-    { icon: Home, label: t(locale, 'home'), screen: 'home' as const },
-    { icon: Search, label: t(locale, 'browse'), screen: 'browse' as const },
-    { icon: LayoutDashboard, label: t(locale, 'dashboard'), screen: 'seller-dashboard' as const },
-    { icon: ShoppingCart, label: t(locale, 'myCart'), screen: 'cart' as const, badge: cartCount },
-  ];
-
-  const adminLinks = [
-    { icon: Shield, label: 'Admin', screen: 'admin' as const },
-    { icon: LayoutDashboard, label: t(locale, 'dashboard'), screen: 'seller-dashboard' as const },
-  ];
-
-  const navLinks = userRole === 'admin' ? adminLinks : userRole === 'seller' ? sellerLinks : buyerLinks;
 
   const handleNavClick = (screen: string) => {
     setScreen(screen as any);
@@ -123,6 +110,24 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Sell Plant Button — visible to all users (C2C) */}
+          <Button
+            onClick={openSellModal}
+            size="sm"
+            className="hidden sm:flex items-center gap-1.5 bg-accent-green hover:bg-forest-mid text-white rounded-full px-4 font-semibold shadow-sm transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{locale === 'kh' ? 'លក់រុក្ខជាតិ' : 'Sell Plant'}</span>
+          </Button>
+          {/* Mobile: icon-only sell button */}
+          <Button
+            onClick={openSellModal}
+            size="icon"
+            className="sm:hidden h-9 w-9 bg-accent-green hover:bg-forest-mid text-white rounded-full"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+
           {/* Language Toggle */}
           <Button variant="ghost" size="icon" onClick={toggleLocale} className="h-9 w-9">
             <Globe className="h-4 w-4" />
@@ -193,6 +198,15 @@ export default function Navbar() {
                 <HelpCircle className="mr-2 h-4 w-4" />
                 {t(locale, 'helpSupportTitle')}
               </DropdownMenuItem>
+              {isAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setScreen('admin')}>
+                    <Shield className="mr-2 h-4 w-4 text-blue-500" />
+                    {locale === 'kh' ? 'ផ្ទាំងអ្នកគ្រប់គ្រង' : 'Admin Panel'}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -230,6 +244,19 @@ export default function Navbar() {
                     ) : null}
                   </Button>
                 ))}
+                <div className="border-t my-3" />
+                {/* Sell Plant — prominent in mobile menu */}
+                <Button
+                  className="justify-start gap-3 h-11 bg-accent-green hover:bg-forest-mid text-white w-full"
+                  onClick={() => { openSellModal(); setMobileOpen(false); }}
+                >
+                  <Plus className="h-5 w-5" />
+                  <span className="font-semibold">{locale === 'kh' ? 'លក់រុក្ខជាតិ' : 'Sell a Plant'}</span>
+                </Button>
+                <Button variant="ghost" className="justify-start gap-3 h-11" onClick={() => { setScreen('my-listings'); setMobileOpen(false); }}>
+                  <Package className="h-5 w-5" />
+                  <span>{locale === 'kh' ? 'រុក្ខជាតិរបស់ខ្ញុំ' : 'My Listings'}</span>
+                </Button>
                 <div className="border-t my-3" />
                 <Button variant="ghost" className="justify-start gap-3 h-11" onClick={() => { setScreen('profile'); setMobileOpen(false); }}>
                   <User className="h-5 w-5" />

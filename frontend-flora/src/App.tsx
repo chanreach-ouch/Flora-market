@@ -87,7 +87,7 @@ export default function Home() {
         return <MyListingsScreen />;
       case 'home':
       default:
-        return userRole === 'seller' ? <SellerDashboardScreen /> : <HomeScreen />;
+        return <HomeScreen />;
     }
   };
 

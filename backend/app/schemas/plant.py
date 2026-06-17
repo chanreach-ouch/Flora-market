@@ -5,10 +5,10 @@ from datetime import datetime
 
 class PlantBase(BaseModel):
     name_en: str
-    name_kh: str
+    name_kh: Optional[str] = None
     category: str
     price: float
-    stock: int
+    stock: int = 0
     tagline: Optional[str] = None
     tagline_kh: Optional[str] = None
     images: Optional[List[str]] = []

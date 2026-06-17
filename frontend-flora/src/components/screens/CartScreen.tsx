@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { getPlantById, getSellerById } from '@/lib/data';
+import type { MockPlant } from '@/lib/data';
 import { formatUSD, formatKHR } from '@/lib/i18n';
+import { apiFetchPlantById, apiPlaceOrders } from '@/lib/api';
+import { showToast } from '@/components/ui/toast-custom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,10 +19,24 @@ export default function CartScreen() {
   const { cartItems, removeFromCart, updateCartQuantity, clearCart, selectOrder, locale, setScreen } = useAppStore();
   const [promoCode, setPromoCode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('aba');
+  const [apiPlantCache, setApiPlantCache] = useState<Record<string, MockPlant>>({});
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // For each cart item not found in mock data, fetch from API
+  useEffect(() => {
+    cartItems.forEach(({ plantId }) => {
+      if (getPlantById(plantId) || apiPlantCache[plantId]) return;
+      apiFetchPlantById(plantId)
+        .then(p => setApiPlantCache(prev => ({ ...prev, [plantId]: p })))
+        .catch(() => {});
+    });
+  }, [cartItems]);
+
+  const resolvePlant = (plantId: string) => getPlantById(plantId) || apiPlantCache[plantId];
 
   const cartWithDetails = cartItems.map(item => {
-    const plant = getPlantById(item.plantId);
-    const seller = plant ? getSellerById(plant.sellerId) : null;
+    const plant = resolvePlant(item.plantId);
+    const seller = plant ? (getSellerById(plant.sellerId) || null) : null;
     return { ...item, plant, seller };
   }).filter(item => item.plant);
 
@@ -35,9 +52,33 @@ export default function CartScreen() {
   const serviceFee = subtotal * 0.05;
   const total = subtotal + serviceFee;
 
-  const handlePlaceOrder = () => {
-    clearCart();
-    selectOrder('ORD-' + Date.now());
+  const handlePlaceOrder = async () => {
+    setIsPlacingOrder(true);
+    try {
+      // Group cart items by seller for the backend (one order per seller)
+      const grouped: Record<string, { sellerId: string; items: { plant_id: string; quantity: number }[] }> = {};
+      for (const item of cartWithDetails) {
+        if (!item.plant) continue;
+        const sid = item.plant.sellerId;
+        if (!grouped[sid]) grouped[sid] = { sellerId: sid, items: [] };
+        grouped[sid].items.push({ plant_id: item.plantId, quantity: item.quantity });
+      }
+      const groups = Object.values(grouped);
+      if (groups.length > 0) {
+        const orders = await apiPlaceOrders(groups);
+        clearCart();
+        selectOrder(orders[0]?.id || 'ORD-' + Date.now());
+      } else {
+        clearCart();
+        selectOrder('ORD-' + Date.now());
+      }
+    } catch {
+      // If backend unavailable, still show confirmation (demo mode)
+      clearCart();
+      selectOrder('ORD-' + Date.now());
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   const paymentMethods = [
@@ -181,11 +222,12 @@ export default function CartScreen() {
 
               {/* Place Order */}
               <Button
-                className="w-full h-12 mt-6 bg-accent-green hover:bg-forest-mid text-white text-base"
+                className="w-full h-12 mt-6 bg-accent-green hover:bg-forest-mid text-white text-base disabled:opacity-60"
                 onClick={handlePlaceOrder}
+                disabled={isPlacingOrder}
               >
                 <CreditCard className="h-5 w-5 mr-2" />
-                {t(locale, 'placeOrder')}
+                {isPlacingOrder ? (locale === 'kh' ? 'កំពុងដំណើរការ...' : 'Processing...') : t(locale, 'placeOrder')}
               </Button>
 
               <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { plants, mockOrders, sellers, getPlantsBySeller, getSellerById, plantEmojis } from '@/lib/data';
-import { formatUSD, formatKHR } from '@/lib/i18n';
+import { mockOrders, sellers, getPlantsBySeller, getSellerById, plantEmojis } from '@/lib/data';
+import type { MockPlant, MockSeller, MockOrder } from '@/lib/data';
+import { apiFetchMySeller, apiFetchPlantsBySeller, apiFetchSellerOrders, apiUpdateOrderStatus } from '@/lib/api';
+import { formatUSD } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -55,53 +57,61 @@ const statusConfig: Record<OrderStatus, { label: string; labelKh: string; icon: 
 };
 
 export default function SellerDashboardScreen() {
-  const { locale, userRole, user } = useAppStore();
-  const [orders, setOrders] = useState(mockOrders);
+  const { locale, user } = useAppStore();
+  const [orders, setOrders] = useState<MockOrder[]>(mockOrders);
+  const [sellerPlants, setSellerPlants] = useState<MockPlant[]>([]);
+  const [seller, setSeller] = useState<MockSeller | undefined>(undefined);
   const [orderFilter, setOrderFilter] = useState<'all' | OrderStatus>('all');
   const [searchPlants, setSearchPlants] = useState('');
-  const [addPlantOpen, setAddPlantOpen] = useState(false);
-  const [addPlantSuccess, setAddPlantSuccess] = useState(false);
-  const [newPlant, setNewPlant] = useState({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
 
-  const handleAddPlant = () => {
-    if (!newPlant.nameEn || !newPlant.price) return;
-    setAddPlantSuccess(true);
-    setNewPlant({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
-    setTimeout(() => {
-      setAddPlantSuccess(false);
-      setAddPlantOpen(false);
-    }, 1500);
-  };
+  const loadDashboard = useCallback(async () => {
+    try {
+      const s = await apiFetchMySeller();
+      setSeller(s);
+      const [plants, apiOrders] = await Promise.all([
+        apiFetchPlantsBySeller(s.id),
+        apiFetchSellerOrders(),
+      ]);
+      setSellerPlants(plants);
+      if (apiOrders.length > 0) setOrders(apiOrders);
+    } catch {
+      // Backend unavailable — keep demo mock data
+      const fallbackSeller = getSellerById('seller-1');
+      if (fallbackSeller) {
+        setSeller(fallbackSeller);
+        setSellerPlants(getPlantsBySeller('seller-1'));
+      }
+    }
+  }, []);
 
-  // Find seller matching logged-in user ID, fallback to seller-1 for demo
-  // When backend is connected, replace with API call to /sellers/me
-  const matchedSeller = user?.id ? sellers.find(s => s.id === user.id) : null;
-  const sellerId = matchedSeller ? matchedSeller.id : 'seller-1';
-  const seller = getSellerById(sellerId);
-  const sellerPlants = getPlantsBySeller(sellerId);
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+
   const filteredPlants = sellerPlants.filter(p =>
     !searchPlants || p.nameEn.toLowerCase().includes(searchPlants.toLowerCase()) || p.nameKh.includes(searchPlants)
   );
-  // Show only orders for this seller
-  const sellerOrders = orders.filter(o => o.sellerId === sellerId);
+  const sellerOrders = orders.filter(o => seller ? o.sellerId === seller.id : true);
   const filteredOrders = sellerOrders.filter(o => orderFilter === 'all' || o.status === orderFilter);
 
   const todayOrders = sellerOrders.filter(o => o.status === 'pending').length;
   const totalRevenue = sellerOrders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
   const activeListings = sellerPlants.filter(p => p.isActive).length;
 
-  const advanceOrderStatus = (orderId: string) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id !== orderId) return o;
-      const nextStatus: Record<OrderStatus, OrderStatus | null> = {
-        pending: 'preparing',
-        preparing: 'completed',
-        completed: null,
-      };
-      const next = nextStatus[o.status];
-      if (!next) return o;
-      return { ...o, status: next };
-    }));
+  const advanceOrderStatus = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const nextStatus: Record<OrderStatus, OrderStatus | null> = {
+      pending: 'preparing', preparing: 'completed', completed: null,
+    };
+    const next = nextStatus[order.status];
+    if (!next) return;
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: next } : o));
+    try {
+      await apiUpdateOrderStatus(orderId, next);
+    } catch {
+      // Revert on failure
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: order.status } : o));
+    }
   };
 
   const getNextAction = (status: OrderStatus) => {

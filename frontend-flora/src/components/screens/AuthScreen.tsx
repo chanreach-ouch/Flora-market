@@ -5,7 +5,6 @@ import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 
 export default function AuthScreen() {
   const { locale, login, register } = useAppStore();
@@ -16,30 +15,15 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
-
-  const demoAccounts = [
-    { label: '🛒 Buyer',  email: 'buyer@demo.com',  role: 'buyer'  as const, color: 'text-accent-green' },
-    { label: '🏪 Seller', email: 'seller@demo.com', role: 'seller' as const, color: 'text-gold' },
-    { label: '🛡️ Admin',  email: 'admin@demo.com',  role: 'admin'  as const, color: 'text-blue-500' },
-  ];
-
-  const fillDemo = (acc: typeof demoAccounts[number]) => {
-    setLoginId(acc.email);
-    setPassword('demo123');
-    setRole(acc.role as 'buyer' | 'seller');
-    setError('');
-  };
 
   const handleLogin = async () => {
     if (!loginId) { setError(t(locale, 'fieldRequired')); return; }
     if (!password || password.length < 6) { setError(t(locale, 'passwordMin')); return; }
     setLoading(true);
     try {
-      await login(loginId, password, role);
+      await login(loginId, password, 'buyer');
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -55,7 +39,7 @@ export default function AuthScreen() {
     if (password !== confirmPassword) { setError(t(locale, 'passwordMismatch')); return; }
     setLoading(true);
     try {
-      await register(fullName, email, phone, password, role);
+      await register(fullName, email, phone, password, 'buyer');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -63,9 +47,19 @@ export default function AuthScreen() {
     }
   };
 
+  const spinner = (
+    <span className="flex items-center gap-2">
+      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      {locale === 'kh' ? 'កំពុងដំណើរការ...' : 'Please wait...'}
+    </span>
+  );
+
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Decorative */}
+      {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-forest via-forest-mid to-accent-green relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 text-9xl">🌿</div>
@@ -80,26 +74,17 @@ export default function AuthScreen() {
           <p className="text-xl text-pale-green/80 mb-8">
             {locale === 'kh'
               ? 'ស្វែងរករុក្ខជាតិល្អឥតខ្ចោះថ្ងៃនេះ'
-              : "Cambodia's trusted plant marketplace — connecting verified nurseries with plant lovers."}
+              : "Cambodia's trusted plant marketplace — buy and sell with ease."}
           </p>
           <div className="space-y-4 text-pale-green/70">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'តម្លៃថេរ គ្មានការចរចា' : 'Fixed prices, no negotiation'}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'អ្នកលក់បានផ្ទៀងផ្ទាត់' : 'Verified sellers'}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <span>{locale === 'kh' ? 'ទូទាត់សុវត្ថិភាព' : 'Secure payments'}</span>
-            </div>
+            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'ទិញ និងលក់ក្នុងគណនីតែមួយ' : 'Buy and sell with one account'}</span></div>
+            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'អ្នកលក់បានផ្ទៀងផ្ទាត់' : 'Verified sellers'}</span></div>
+            <div className="flex items-center gap-3"><span className="text-2xl">✓</span><span>{locale === 'kh' ? 'ទូទាត់សុវត្ថិភាព' : 'Secure payments'}</span></div>
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Form */}
+      {/* Right Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
@@ -116,34 +101,6 @@ export default function AuthScreen() {
           <p className="text-muted-foreground mb-8">
             {isLogin ? t(locale, 'loginSubtitle') : t(locale, 'registerSubtitle')}
           </p>
-
-          {/* Role Selector */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              onClick={() => setRole('buyer')}
-              className={`p-4 rounded-xl border-2 transition-flora text-center ${
-                role === 'buyer'
-                  ? 'border-accent-green bg-pale-green/50 dark:bg-forest-mid/30'
-                  : 'border-border hover:border-accent-green/50'
-              }`}
-            >
-              <div className="text-2xl mb-1">🛒</div>
-              <div className="font-medium text-sm">{t(locale, 'registerAsBuyer')}</div>
-              <div className="text-xs text-muted-foreground">{t(locale, 'buyerDescription')}</div>
-            </button>
-            <button
-              onClick={() => setRole('seller')}
-              className={`p-4 rounded-xl border-2 transition-flora text-center ${
-                role === 'seller'
-                  ? 'border-gold bg-cream/50 dark:bg-forest-mid/30'
-                  : 'border-border hover:border-gold/50'
-              }`}
-            >
-              <div className="text-2xl mb-1">🏪</div>
-              <div className="font-medium text-sm">{t(locale, 'registerAsSeller')}</div>
-              <div className="text-xs text-muted-foreground">{t(locale, 'sellerDescription')}</div>
-            </button>
-          </div>
 
           {error && (
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">{error}</div>
@@ -219,17 +176,7 @@ export default function AuthScreen() {
               onClick={isLogin ? handleLogin : handleRegister}
               disabled={loading}
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  {locale === 'kh' ? 'កំពុងដំណើរការ...' : 'Please wait...'}
-                </span>
-              ) : (
-                isLogin ? t(locale, 'loginButton') : t(locale, 'registerButton')
-              )}
+              {loading ? spinner : (isLogin ? t(locale, 'loginButton') : t(locale, 'registerButton'))}
             </Button>
           </div>
 
@@ -241,38 +188,6 @@ export default function AuthScreen() {
               {isLogin ? t(locale, 'noAccount') : t(locale, 'hasAccount')}
             </button>
           </div>
-
-          {/* Demo Accounts Panel */}
-          {isLogin && (
-            <div className="mt-6">
-              <button
-                onClick={() => setShowDemo(!showDemo)}
-                className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 py-2"
-              >
-                <span>🚀</span>
-                <span>{showDemo ? 'Hide' : 'Show'} Demo Accounts</span>
-                <span>{showDemo ? '▲' : '▼'}</span>
-              </button>
-              {showDemo && (
-                <div className="mt-2 p-4 bg-muted/50 rounded-xl border border-dashed">
-                  <p className="text-xs text-muted-foreground mb-3 text-center">
-                    Click to auto-fill credentials · Password: <code className="font-mono">demo123</code>
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {demoAccounts.map(acc => (
-                      <button
-                        key={acc.email}
-                        onClick={() => fillDemo(acc)}
-                        className={`p-2 rounded-lg border hover:border-accent-green/50 bg-background text-xs font-medium transition-flora ${acc.color}`}
-                      >
-                        {acc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

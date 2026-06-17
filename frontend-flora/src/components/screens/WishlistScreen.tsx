@@ -1,16 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { getPlantById, getSellerById, plantEmojis } from '@/lib/data';
+import type { MockPlant } from '@/lib/data';
+import { apiFetchPlantById } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, ShoppingCart, Star, Trash2, ArrowLeft } from 'lucide-react';
 
 export default function WishlistScreen() {
-  const { locale, goBack, wishlistItems, removeFromWishlist, addToCart, selectPlant, userRole } = useAppStore();
+  const { locale, goBack, wishlistItems, removeFromWishlist, addToCart, selectPlant } = useAppStore();
+  const [apiPlantCache, setApiPlantCache] = useState<Record<string, MockPlant>>({});
 
-  const wishlistPlants = wishlistItems.map(id => getPlantById(id)).filter(Boolean);
+  useEffect(() => {
+    wishlistItems.forEach(id => {
+      if (getPlantById(id) || apiPlantCache[id]) return;
+      apiFetchPlantById(id).then(p => setApiPlantCache(prev => ({ ...prev, [id]: p }))).catch(() => {});
+    });
+  }, [wishlistItems]);
+
+  const wishlistPlants = wishlistItems
+    .map(id => getPlantById(id) || apiPlantCache[id])
+    .filter(Boolean) as MockPlant[];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">

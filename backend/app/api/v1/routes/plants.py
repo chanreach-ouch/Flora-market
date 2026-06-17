@@ -7,7 +7,7 @@ from app.api import deps
 from app.models.plant import Plant
 from app.models.seller import Seller
 from app.models.user import User
-from app.schemas.plant import PlantResponse
+from app.schemas.plant import PlantCreate, PlantResponse
 
 router = APIRouter()
 
@@ -49,22 +49,78 @@ async def get_plant(plant_id: str, db: AsyncSession = Depends(deps.get_db)):
 
 @router.post("/", response_model=PlantResponse)
 async def create_plant(
-    plant_data: dict,
+    plant_in: PlantCreate,
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    """Create a new plant listing (seller only)."""
-    # Get seller profile for this user
+    """Create a new plant listing. Any authenticated user can sell (C2C).
+    A seller profile is auto-created on first listing if one doesn't exist."""
     result = await db.execute(select(Seller).where(Seller.user_id == current_user.id))
     seller = result.scalars().first()
-    if not seller:
-        raise HTTPException(status_code=403, detail="Only sellers can add plants")
 
-    plant = Plant(seller_id=seller.id, **plant_data)
+    if not seller:
+        # Auto-create a seller profile so any user can list plants (C2C model)
+        import datetime as dt
+        seller = Seller(
+            user_id=current_user.id,
+            nursery_name=current_user.full_name or current_user.email,
+            year_joined=dt.datetime.utcnow().year,
+        )
+        db.add(seller)
+        await db.flush()  # get seller.id before creating plant
+
+    plant = Plant(seller_id=seller.id, **plant_in.model_dump())
     db.add(plant)
     await db.commit()
     await db.refresh(plant)
     return plant
+
+
+@router.patch("/{plant_id}", response_model=PlantResponse)
+async def update_plant(
+    plant_id: str,
+    plant_in: PlantCreate,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
+    """Update a plant listing. Only the owner can edit."""
+    result = await db.execute(select(Plant).where(Plant.id == plant_id))
+    plant = result.scalars().first()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    result = await db.execute(select(Seller).where(Seller.user_id == current_user.id))
+    seller = result.scalars().first()
+    if not seller or plant.seller_id != seller.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this plant")
+
+    for key, value in plant_in.model_dump().items():
+        setattr(plant, key, value)
+
+    await db.commit()
+    await db.refresh(plant)
+    return plant
+
+
+@router.delete("/{plant_id}", status_code=204)
+async def delete_plant(
+    plant_id: str,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
+    """Delete a plant listing. Only the owner can delete."""
+    result = await db.execute(select(Plant).where(Plant.id == plant_id))
+    plant = result.scalars().first()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    result = await db.execute(select(Seller).where(Seller.user_id == current_user.id))
+    seller = result.scalars().first()
+    if not seller or plant.seller_id != seller.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this plant")
+
+    await db.delete(plant)
+    await db.commit()
 
 
 @router.patch("/{plant_id}/toggle", response_model=PlantResponse)

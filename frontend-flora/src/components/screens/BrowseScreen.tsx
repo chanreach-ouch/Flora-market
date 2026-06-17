@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { plants, categories, plantEmojis, getPlantsByCategory, getSellerById } from '@/lib/data';
+import { plants as mockPlants, categories, plantEmojis, getSellerById } from '@/lib/data';
+import type { MockPlant } from '@/lib/data';
+import { apiFetchPlants } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,14 +20,23 @@ export default function BrowseScreen() {
   const [priceRange, setPriceRange] = useState([0, 50]);
   const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high' | 'rating'>('name');
   const [showFilters, setShowFilters] = useState(false);
+  const [allPlants, setAllPlants] = useState<MockPlant[]>(mockPlants);
 
-  let filtered = getPlantsByCategory(selectedCategory).filter(p => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q);
-  }).filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
+  useEffect(() => {
+    apiFetchPlants(selectedCategory !== 'All' ? selectedCategory : undefined)
+      .then(setAllPlants)
+      .catch(() => setAllPlants(mockPlants));
+  }, [selectedCategory]);
 
-  // Sort
+  let filtered = allPlants
+    .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
+    .filter(p => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return p.nameEn.toLowerCase().includes(q) || p.nameKh.includes(q);
+    })
+    .filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
+
   if (sortBy === 'price-low') filtered.sort((a, b) => a.price - b.price);
   else if (sortBy === 'price-high') filtered.sort((a, b) => b.price - a.price);
   else if (sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating);

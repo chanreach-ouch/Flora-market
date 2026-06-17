@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import { t } from '@/lib/i18n';
-import { plants, plantEmojis } from '@/lib/data';
+import { plantEmojis } from '@/lib/data';
+import type { MockPlant } from '@/lib/data';
+import { apiFetchMySeller, apiFetchPlantsBySeller, apiDeletePlant } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,14 +14,23 @@ import SellPlantModal from '@/components/modals/SellPlantModal';
 import { showToast } from '@/components/ui/toast-custom';
 
 export default function MyListingsScreen() {
-  const { locale, user } = useAppStore();
+  const { locale } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [sellModalOpen, setSellModalOpen] = useState(false);
   const [editingPlant, setEditingPlant] = useState<any>(null);
+  const [myListings, setMyListings] = useState<MockPlant[]>([]);
 
-  // TODO: Replace with actual user's listings from API
-  // For now, using mock data filtered by seller
-  const myListings = plants.filter(p => p.sellerId === 'seller-1'); // Replace with user.sellerId
+  const loadListings = useCallback(async () => {
+    try {
+      const seller = await apiFetchMySeller();
+      const plants = await apiFetchPlantsBySeller(seller.id);
+      setMyListings(plants);
+    } catch {
+      setMyListings([]);
+    }
+  }, []);
+
+  useEffect(() => { loadListings(); }, [loadListings]);
 
   const filteredListings = myListings.filter(p => {
     if (!searchQuery) return true;
@@ -33,17 +43,17 @@ export default function MyListingsScreen() {
     setSellModalOpen(true);
   };
 
-  const handleDelete = (plant: any) => {
-    // Show confirmation
-    if (window.confirm(locale === 'kh' 
-      ? 'តើអ្នកប្រាកដថាចង់លុបរុក្ខជាតិនេះ?' 
+  const handleDelete = async (plant: any) => {
+    if (!window.confirm(locale === 'kh'
+      ? 'តើអ្នកប្រាកដថាចង់លុបរុក្ខជាតិនេះ?'
       : 'Are you sure you want to remove this plant?'
-    )) {
-      // TODO: API call to delete
-      showToast('success', locale === 'kh' 
-        ? 'រុក្ខជាតិត្រូវបានលុបដោយជោគជ័យ' 
-        : 'Plant removed successfully'
-      );
+    )) return;
+    try {
+      await apiDeletePlant(plant.id);
+      showToast('success', locale === 'kh' ? 'រុក្ខជាតិត្រូវបានលុបដោយជោគជ័យ' : 'Plant removed successfully');
+      loadListings();
+    } catch (err: any) {
+      showToast('error', err?.message || (locale === 'kh' ? 'មានបញ្ហា' : 'Failed to remove plant'));
     }
   };
 
@@ -224,6 +234,7 @@ export default function MyListingsScreen() {
         onClose={() => {
           setSellModalOpen(false);
           setEditingPlant(null);
+          loadListings();
         }}
         editingPlant={editingPlant}
       />

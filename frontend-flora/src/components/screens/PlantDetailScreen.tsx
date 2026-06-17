@@ -1,21 +1,38 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { getPlantById, getSellerById, getReviewsByPlant, plantEmojis } from '@/lib/data';
+import type { MockPlant, MockSeller, MockReview } from '@/lib/data';
+import { apiFetchPlantById, apiFetchSellerById, apiFetchReviewsByPlant } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Heart, ShoppingCart, Star, MapPin, Droplets, Sun, Thermometer, Gauge, Truck, Check, X as XIcon } from 'lucide-react';
 
 export default function PlantDetailScreen() {
   const { selectedPlantId, locale, goBack, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
-  const plant = getPlantById(selectedPlantId || 'plant-1');
-  if (!plant) return null;
 
-  const seller = getSellerById(plant.sellerId);
-  const reviews = getReviewsByPlant(plant.id);
+  const mockPlant = getPlantById(selectedPlantId || 'plant-1');
+  const [plant, setPlant] = useState<MockPlant | undefined>(mockPlant);
+  const [seller, setSeller] = useState<MockSeller | undefined>(mockPlant ? getSellerById(mockPlant.sellerId) : undefined);
+  const [reviews, setReviews] = useState<MockReview[]>(mockPlant ? getReviewsByPlant(mockPlant.id) : []);
+
+  useEffect(() => {
+    if (!selectedPlantId) return;
+    apiFetchPlantById(selectedPlantId)
+      .then(p => {
+        setPlant(p);
+        apiFetchSellerById(p.sellerId).then(setSeller).catch(() => {});
+        apiFetchReviewsByPlant(p.id).then(setReviews).catch(() => {});
+      })
+      .catch(() => {
+        // keep mock data already set
+      });
+  }, [selectedPlantId]);
+
+  if (!plant) return null;
   const wishlisted = isInWishlist(plant.id);
 
   return (

@@ -191,34 +191,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   login: async (loginId, password, role) => {
     const { email, phone } = parseLoginId(loginId);
 
-    // ────────────────────────────────────────────────────────────
-    // DEMO MODE — works without a running backend / database.
-    // Demo accounts:
-    //   buyer@demo.com   / demo123  → buyer
-    //   seller@demo.com  / demo123  → seller
-    //   admin@demo.com   / demo123  → admin
-    // ────────────────────────────────────────────────────────────
+    // Demo credentials — used as offline fallback ONLY when the backend is unreachable or rejects them.
+    // If the backend is running and has real accounts with these emails, the real token takes precedence.
     const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
       'buyer@demo.com':  { role: 'buyer',  name: 'Demo Buyer' },
       'seller@demo.com': { role: 'seller', name: 'Demo Seller' },
       'admin@demo.com':  { role: 'admin',  name: 'Demo Admin' },
     };
     const loginKey = (email || phone).toLowerCase();
-    if (DEMO_ACCOUNTS[loginKey] && password === 'demo123') {
-      const demo = DEMO_ACCOUNTS[loginKey];
-      const newState = {
-        isAuthenticated: true,
-        userRole: demo.role,
-        isAdmin: demo.role === 'admin',
-        user: { id: 'demo-user', name: demo.name, email: loginKey, phone: '', role: demo.role },
-        currentScreen: (demo.role === 'seller' ? 'seller-dashboard' : demo.role === 'admin' ? 'admin' : 'home') as Screen,
-      };
-      set(newState);
-      saveState({ ...get(), ...newState });
-      return;
-    }
 
-    // ── Real backend login ──
+    // ── Real backend login (attempted for ALL accounts, including demo emails) ──
     try {
       const data = await fetchApi('/auth/login', {
         method: 'POST',
@@ -253,12 +235,27 @@ export const useAppStore = create<AppState>((set, get) => ({
           phone: me.phone || '',
           role: mappedRole,
         },
-        currentScreen: (mappedRole === 'seller' ? 'seller-dashboard' : mappedRole === 'admin' ? 'admin' : 'home') as Screen,
+        currentScreen: 'home' as Screen,
       };
       set(newState);
       saveState({ ...get(), ...newState });
     } catch (err: any) {
-      // Re-throw with a clear message
+      // ── Demo fallback: offline / backend-unavailable mode ──────────────────
+      // Activates when the backend is down OR returns an error for known demo credentials.
+      // No token is stored, so API mutations (create/update/delete) are unavailable.
+      if (DEMO_ACCOUNTS[loginKey] && password === 'demo123') {
+        const demo = DEMO_ACCOUNTS[loginKey];
+        const newState = {
+          isAuthenticated: true,
+          userRole: demo.role,
+          isAdmin: demo.role === 'admin',
+          user: { id: 'demo-user', name: demo.name, email: loginKey, phone: '', role: demo.role },
+          currentScreen: 'home' as Screen,
+        };
+        set(newState);
+        saveState({ ...get(), ...newState });
+        return;
+      }
       throw new Error(err?.message || 'Login failed. Please check your credentials.');
     }
   },
