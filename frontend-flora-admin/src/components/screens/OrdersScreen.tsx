@@ -1,16 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { adminOrders, type AdminOrder } from '@/lib/adminData';
+import { getAllOrders, updateOrderStatus } from '@/lib/api';
 import { formatUSD } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   ShoppingBag, Clock, CheckCircle2, XCircle, Search,
-  MoreHorizontal, Download, TrendingUp,
+  MoreHorizontal, Download, TrendingUp, Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -18,6 +17,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+interface OrderItem {
+  id: string;
+  plant_id: string;
+  quantity: number;
+  unit_price: number;
+}
+
+interface ApiOrder {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  items: OrderItem[];
+}
 
 type StatusFilter = 'all' | 'pending' | 'preparing' | 'completed' | 'cancelled';
 
@@ -37,15 +53,20 @@ const nextStatus: Record<string, string | null> = {
 
 export default function OrdersScreen() {
   const { locale } = useAppStore();
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [orders, setOrders] = useState<AdminOrder[]>(adminOrders);
+
+  useEffect(() => {
+    getAllOrders({ limit: 500 })
+      .then(setOrders)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = orders.filter(o => {
-    const matchSearch = !search ||
-      o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.buyerName.toLowerCase().includes(search.toLowerCase()) ||
-      o.plantNameEn.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || o.id.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -58,25 +79,40 @@ export default function OrdersScreen() {
     cancelled: orders.filter(o => o.status === 'cancelled').length,
   };
 
-  const totalRevenue = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
-  const totalCommission = orders.filter(o => o.status === 'completed').reduce((s, o) => s + o.commission, 0);
+  const totalRevenue = orders
+    .filter(o => o.status === 'completed')
+    .reduce((s, o) => s + o.total_amount, 0);
+  const totalCommission = totalRevenue * 0.05;
 
-  const advanceStatus = (id: string) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id !== id) return o;
-      const next = nextStatus[o.status];
-      return next ? { ...o, status: next as AdminOrder['status'] } : o;
-    }));
+  const advanceStatus = async (order: ApiOrder) => {
+    const next = nextStatus[order.status];
+    if (!next) return;
+    try {
+      await updateOrderStatus(order.id, next);
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: next } : o));
+    } catch { /* ignore */ }
   };
 
-  const cancelOrder = (id: string) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'cancelled', commission: 0 } : o));
+  const cancelOrder = async (order: ApiOrder) => {
+    try {
+      await updateOrderStatus(order.id, 'cancelled');
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+    } catch { /* ignore */ }
   };
 
   const exportCsv = () => {
     const rows = [
-      ['Order ID', 'Buyer', 'Seller', 'Plant', 'Qty', 'Total', 'Commission', 'Status', 'Date'],
-      ...filtered.map(o => [o.id, o.buyerName, o.sellerName, o.plantNameEn, o.quantity, o.total, o.commission, o.status, o.timestamp]),
+      ['Order ID', 'Buyer ID', 'Seller ID', 'Items', 'Total', 'Commission', 'Status', 'Date'],
+      ...filtered.map(o => [
+        o.id,
+        o.buyer_id.slice(0, 8),
+        o.seller_id.slice(0, 8),
+        o.items.length,
+        o.total_amount.toFixed(2),
+        (o.status === 'completed' ? o.total_amount * 0.05 : 0).toFixed(2),
+        o.status,
+        new Date(o.created_at).toLocaleDateString(),
+      ]),
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a');
@@ -89,6 +125,7 @@ export default function OrdersScreen() {
 
   return (
     <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
@@ -149,7 +186,7 @@ export default function OrdersScreen() {
                 <Input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder={locale === 'kh' ? 'ស្វែងរក...' : 'Search orders...'}
+                  placeholder={locale === 'kh' ? 'ស្វែងរក...' : 'Search by order ID...'}
                   className="pl-8 h-8 text-xs w-44"
                 />
               </div>
@@ -180,97 +217,115 @@ export default function OrdersScreen() {
         </CardHeader>
 
         <CardContent className="pt-0 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Order</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Buyer</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Seller</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Plant</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">Date</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Status</th>
-                <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Total</th>
-                <th className="py-2.5 px-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(order => {
-                const s = statusConfig[order.status];
-                const next = nextStatus[order.status];
-                return (
-                  <tr key={order.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3">
-                      <span className="font-mono text-xs font-semibold">{order.id}</span>
-                    </td>
-                    <td className="py-3 px-3 hidden sm:table-cell">
-                      <span className="text-xs">{order.buyerName}</span>
-                    </td>
-                    <td className="py-3 px-3 hidden md:table-cell">
-                      <span className="text-xs text-muted-foreground">{order.sellerName}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div>
-                        <p className="text-xs font-medium">{order.plantNameEn}</p>
-                        <p className="text-[10px] text-muted-foreground">x{order.quantity}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 hidden lg:table-cell">
-                      <span className="text-xs text-muted-foreground">{order.timestamp}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${s.color}`}>
-                        {locale === 'kh' ? s.labelKh : s.label}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <div>
-                        <p className="text-xs font-semibold">{formatUSD(order.total)}</p>
-                        {order.commission > 0 && (
-                          <p className="text-[10px] text-accent-green">+{formatUSD(order.commission)}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          {next && (
-                            <DropdownMenuItem onClick={() => advanceStatus(order.id)}>
-                              <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                              {locale === 'kh' ? 'ជំរុញឆ្ពោះទៅ' : 'Advance to'} {statusConfig[next]?.label}
-                            </DropdownMenuItem>
-                          )}
-                          {order.status !== 'cancelled' && order.status !== 'completed' && (
-                            <DropdownMenuItem onClick={() => cancelOrder(order.id)} className="text-destructive focus:text-destructive">
-                              <XCircle className="mr-2 h-3.5 w-3.5" />
-                              {locale === 'kh' ? 'លុបចោល' : 'Cancel Order'}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {filtered.length === 0 && (
-            <div className="py-12 text-center text-muted-foreground text-sm">
-              {locale === 'kh' ? 'រកមិនឃើញ' : 'No orders found'}
+          {loading ? (
+            <div className="py-12 flex items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          )}
+          ) : (
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Order</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Items</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Status</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Total</th>
+                    <th className="py-2.5 px-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(order => {
+                    const s = statusConfig[order.status];
+                    const next = nextStatus[order.status];
+                    const commission = order.status === 'completed' ? order.total_amount * 0.05 : 0;
+                    return (
+                      <tr key={order.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-3">
+                          <div>
+                            <span className="font-mono text-xs font-semibold">#{order.id.slice(0, 8)}</span>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Buyer: {order.buyer_id.slice(0, 8)}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 hidden md:table-cell">
+                          <div>
+                            <p className="text-xs font-medium">
+                              {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                            </p>
+                            {order.items[0] && (
+                              <p className="text-[10px] text-muted-foreground">
+                                x{order.items[0].quantity} @ {formatUSD(order.items[0].unit_price)}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 hidden lg:table-cell">
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${s?.color ?? ''}`}>
+                            {locale === 'kh' ? s?.labelKh : s?.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div>
+                            <p className="text-xs font-semibold">{formatUSD(order.total_amount)}</p>
+                            {commission > 0 && (
+                              <p className="text-[10px] text-accent-green">+{formatUSD(commission)}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              {next && (
+                                <DropdownMenuItem onClick={() => advanceStatus(order)}>
+                                  <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                                  {locale === 'kh' ? 'ជំរុញទៅ' : 'Advance to'} {statusConfig[next]?.label}
+                                </DropdownMenuItem>
+                              )}
+                              {order.status !== 'cancelled' && order.status !== 'completed' && (
+                                <DropdownMenuItem
+                                  onClick={() => cancelOrder(order)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <XCircle className="mr-2 h-3.5 w-3.5" />
+                                  {locale === 'kh' ? 'លុបចោល' : 'Cancel Order'}
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-          <div className="flex items-center justify-between pt-3 border-t mt-2">
-            <p className="text-xs text-muted-foreground">
-              {locale === 'kh' ? `បង្ហាញ ${filtered.length} / ${orders.length}` : `Showing ${filtered.length} of ${orders.length} orders`}
-            </p>
-            <Badge variant="outline" className="text-[10px]">Mock data</Badge>
-          </div>
+              {filtered.length === 0 && (
+                <div className="py-12 text-center text-muted-foreground text-sm">
+                  {locale === 'kh' ? 'រកមិនឃើញ' : 'No orders found'}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-3 border-t mt-2">
+                <p className="text-xs text-muted-foreground">
+                  {locale === 'kh'
+                    ? `បង្ហាញ ${filtered.length} / ${orders.length}`
+                    : `Showing ${filtered.length} of ${orders.length} orders`}
+                </p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

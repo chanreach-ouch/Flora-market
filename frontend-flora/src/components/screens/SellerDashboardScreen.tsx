@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { mockOrders, sellers, getPlantsBySeller, getSellerById, plantEmojis } from '@/lib/data';
+import { plantEmojis } from '@/lib/data';
 import type { MockPlant, MockSeller, MockOrder } from '@/lib/data';
-import { apiFetchMySeller, apiFetchPlantsBySeller, apiFetchSellerOrders, apiUpdateOrderStatus } from '@/lib/api';
+import { apiFetchMySeller, apiFetchPlantsBySeller, apiFetchSellerOrders, apiUpdateOrderStatus, apiCreatePlant } from '@/lib/api';
 import { formatUSD } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,11 +58,14 @@ const statusConfig: Record<OrderStatus, { label: string; labelKh: string; icon: 
 
 export default function SellerDashboardScreen() {
   const { locale, user } = useAppStore();
-  const [orders, setOrders] = useState<MockOrder[]>(mockOrders);
+  const [orders, setOrders] = useState<MockOrder[]>([]);
   const [sellerPlants, setSellerPlants] = useState<MockPlant[]>([]);
   const [seller, setSeller] = useState<MockSeller | undefined>(undefined);
   const [orderFilter, setOrderFilter] = useState<'all' | OrderStatus>('all');
   const [searchPlants, setSearchPlants] = useState('');
+  const [addPlantOpen, setAddPlantOpen] = useState(false);
+  const [addPlantSuccess, setAddPlantSuccess] = useState(false);
+  const [newPlant, setNewPlant] = useState({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -73,14 +76,9 @@ export default function SellerDashboardScreen() {
         apiFetchSellerOrders(),
       ]);
       setSellerPlants(plants);
-      if (apiOrders.length > 0) setOrders(apiOrders);
+      setOrders(apiOrders);
     } catch {
-      // Backend unavailable — keep demo mock data
-      const fallbackSeller = getSellerById('seller-1');
-      if (fallbackSeller) {
-        setSeller(fallbackSeller);
-        setSellerPlants(getPlantsBySeller('seller-1'));
-      }
+      // Backend unavailable
     }
   }, []);
 
@@ -112,6 +110,28 @@ export default function SellerDashboardScreen() {
       // Revert on failure
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: order.status } : o));
     }
+  };
+
+  const handleAddPlant = async () => {
+    if (!newPlant.nameEn || !newPlant.price || !seller) return;
+    try {
+      await apiCreatePlant({
+        name_en: newPlant.nameEn,
+        name_kh: newPlant.nameKh || undefined,
+        category: newPlant.category || 'Indoor',
+        price: parseFloat(newPlant.price),
+        stock: parseInt(newPlant.stock) || 0,
+        difficulty: newPlant.difficulty || undefined,
+      });
+      setAddPlantSuccess(true);
+      const refreshed = await apiFetchPlantsBySeller(seller.id);
+      setSellerPlants(refreshed);
+      setTimeout(() => {
+        setAddPlantOpen(false);
+        setAddPlantSuccess(false);
+        setNewPlant({ nameEn: '', nameKh: '', category: '', price: '', stock: '', difficulty: '' });
+      }, 1500);
+    } catch { /* ignore */ }
   };
 
   const getNextAction = (status: OrderStatus) => {

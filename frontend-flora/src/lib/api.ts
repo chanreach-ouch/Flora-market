@@ -237,6 +237,18 @@ export async function apiTogglePlant(id: string): Promise<MockPlant> {
   return mapPlant(data);
 }
 
+export async function apiCreatePlant(payload: {
+  name_en: string;
+  name_kh?: string;
+  category: string;
+  price: number;
+  stock: number;
+  difficulty?: string;
+}): Promise<MockPlant> {
+  const data: ApiPlant = await fetchApi('/plants/', { method: 'POST', body: JSON.stringify(payload) });
+  return mapPlant(data);
+}
+
 // Sellers
 export async function apiFetchSellers(): Promise<MockSeller[]> {
   const data: ApiSeller[] = await fetchApi('/sellers/');
@@ -292,4 +304,25 @@ export async function apiUpdateOrderStatus(orderId: string, status: string): Pro
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+}
+
+export async function apiFetchAllOrders(): Promise<MockOrder[]> {
+  const data: ApiOrder[] = await fetchApi('/orders/');
+  return data.map(mapOrder);
+}
+
+export interface ApiStats {
+  total_users: number;
+  active_sellers: number;
+  total_plants: number;
+  total_orders: number;
+  total_revenue: number;
+  total_commission: number;
+  pending_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+}
+
+export async function apiFetchStats(): Promise<ApiStats> {
+  return fetchApi('/stats/');
 }

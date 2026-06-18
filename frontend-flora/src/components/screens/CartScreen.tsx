@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { getPlantById, getSellerById } from '@/lib/data';
-import type { MockPlant } from '@/lib/data';
+import type { MockPlant, MockSeller } from '@/lib/data';
 import { formatUSD, formatKHR } from '@/lib/i18n';
-import { apiFetchPlantById, apiPlaceOrders } from '@/lib/api';
+import { apiFetchPlantById, apiFetchSellerById, apiPlaceOrders } from '@/lib/api';
 import { showToast } from '@/components/ui/toast-custom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,23 +20,38 @@ export default function CartScreen() {
   const [promoCode, setPromoCode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('aba');
   const [apiPlantCache, setApiPlantCache] = useState<Record<string, MockPlant>>({});
+  const [apiSellerCache, setApiSellerCache] = useState<Record<string, MockSeller>>({});
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  // For each cart item not found in mock data, fetch from API
+  const resolvePlant = (plantId: string) => getPlantById(plantId) || apiPlantCache[plantId];
+  const resolveSeller = (sellerId: string) => getSellerById(sellerId) || apiSellerCache[sellerId] || null;
+
+  // Fetch plants and sellers not found in mock data
   useEffect(() => {
     cartItems.forEach(({ plantId }) => {
-      if (getPlantById(plantId) || apiPlantCache[plantId]) return;
-      apiFetchPlantById(plantId)
-        .then(p => setApiPlantCache(prev => ({ ...prev, [plantId]: p })))
-        .catch(() => {});
+      const plant = resolvePlant(plantId);
+      if (!plant) {
+        apiFetchPlantById(plantId)
+          .then(p => {
+            setApiPlantCache(prev => ({ ...prev, [plantId]: p }));
+            if (!getSellerById(p.sellerId) && !apiSellerCache[p.sellerId]) {
+              apiFetchSellerById(p.sellerId)
+                .then(s => setApiSellerCache(prev => ({ ...prev, [s.id]: s })))
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+      } else if (!getSellerById(plant.sellerId) && !apiSellerCache[plant.sellerId]) {
+        apiFetchSellerById(plant.sellerId)
+          .then(s => setApiSellerCache(prev => ({ ...prev, [s.id]: s })))
+          .catch(() => {});
+      }
     });
-  }, [cartItems]);
-
-  const resolvePlant = (plantId: string) => getPlantById(plantId) || apiPlantCache[plantId];
+  }, [cartItems, apiPlantCache]);
 
   const cartWithDetails = cartItems.map(item => {
     const plant = resolvePlant(item.plantId);
-    const seller = plant ? (getSellerById(plant.sellerId) || null) : null;
+    const seller = plant ? resolveSeller(plant.sellerId) : null;
     return { ...item, plant, seller };
   }).filter(item => item.plant);
 

@@ -75,7 +75,9 @@ async def create_plant(
         db.add(seller)
         await db.flush()
 
-    plant = Plant(seller_id=seller.id, **plant_in.model_dump())
+    plant_data = plant_in.model_dump()
+    plant_data['name_kh'] = plant_data.get('name_kh') or plant_data['name_en']
+    plant = Plant(seller_id=seller.id, **plant_data)
     db.add(plant)
     await db.flush()
 

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { plants as mockPlants, categories, plantEmojis, getSellerById } from '@/lib/data';
-import type { MockPlant } from '@/lib/data';
-import { apiFetchPlants } from '@/lib/api';
+import type { MockPlant, MockSeller } from '@/lib/data';
+import { apiFetchPlants, apiFetchSellers } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,12 +21,23 @@ export default function BrowseScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high' | 'rating'>('name');
   const [showFilters, setShowFilters] = useState(false);
   const [allPlants, setAllPlants] = useState<MockPlant[]>(mockPlants);
+  const [sellerMap, setSellerMap] = useState<Record<string, MockSeller>>({});
 
   useEffect(() => {
     apiFetchPlants(selectedCategory !== 'All' ? selectedCategory : undefined)
       .then(setAllPlants)
       .catch(() => setAllPlants(mockPlants));
   }, [selectedCategory]);
+
+  useEffect(() => {
+    apiFetchSellers()
+      .then(list => {
+        const map: Record<string, MockSeller> = {};
+        list.forEach(s => { map[s.id] = s; });
+        setSellerMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   let filtered = allPlants
     .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
@@ -162,7 +173,7 @@ export default function BrowseScreen() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filtered.map(plant => {
-                const seller = getSellerById(plant.sellerId);
+                const seller = getSellerById(plant.sellerId) || sellerMap[plant.sellerId];
                 const wishlisted = isInWishlist(plant.id);
                 return (
                   <Card key={plant.id} className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">

@@ -11,7 +11,6 @@ from app.models.user import User
 from app.models.seller import Seller
 from app.models.plant import Plant
 from app.models.order import Order, OrderStatus
-from app.models.review import Review
 
 router = APIRouter()
 
@@ -21,6 +20,7 @@ class MonthlyRevenue(BaseModel):
     revenue: float
     commission: float
     orders: int
+    new_users: int = 0
 
 
 class PlatformStats(BaseModel):
@@ -67,7 +67,7 @@ async def get_platform_stats(
     total_revenue = round(float(total_revenue_raw), 2)
     total_commission = round(total_revenue * COMMISSION_RATE, 2)
 
-    # Last 12 months of revenue
+    # Last 12 months of revenue + new user signups
     monthly_revenue: List[MonthlyRevenue] = []
     now = datetime.utcnow()
     for i in range(11, -1, -1):
@@ -95,11 +95,19 @@ async def get_platform_stats(
             )
         )).scalar() or 0
 
+        new_users_count = (await db.execute(
+            select(func.count(User.id)).where(
+                User.created_at >= month_start,
+                User.created_at < month_end,
+            )
+        )).scalar() or 0
+
         monthly_revenue.append(MonthlyRevenue(
             month=month_start.strftime("%b %y"),
             revenue=rev,
             commission=round(rev * COMMISSION_RATE, 2),
             orders=order_count,
+            new_users=new_users_count,
         ))
 
     return PlatformStats(

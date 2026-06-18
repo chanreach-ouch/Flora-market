@@ -1,56 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { revenueData, categoryRevenue, platformStats, adminOrders } from '@/lib/adminData';
-import { sellers } from '@/lib/data';
+import { getPlatformStats, getSellers } from '@/lib/api';
 import { formatUSD } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
-  PieChart, Pie, Cell, RadialBarChart, RadialBar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
-  TrendingUp, DollarSign, Users, ShoppingBag, Download, Star,
+  TrendingUp, DollarSign, Users, ShoppingBag, Download, Star, Loader2,
 } from 'lucide-react';
 
 type Period = '6m' | '12m';
 
+interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+  commission: number;
+  orders: number;
+  new_users: number;
+}
+
+interface ApiSeller {
+  id: string;
+  nursery_name: string;
+  total_orders: number;
+  rating: number;
+}
+
 export default function AnalyticsScreen() {
   const { locale } = useAppStore();
   const [period, setPeriod] = useState<Period>('12m');
+  const [monthlyData, setMonthlyData] = useState<MonthlyRevenue[]>([]);
+  const [sellers, setSellers] = useState<ApiSeller[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const displayData = period === '6m' ? revenueData.slice(-6) : revenueData;
+  useEffect(() => {
+    Promise.all([getPlatformStats(), getSellers({ limit: 100 })])
+      .then(([stats, sellerList]) => {
+        setMonthlyData(stats.monthly_revenue ?? []);
+        setSellers(sellerList ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const displayData = period === '6m' ? monthlyData.slice(-6) : monthlyData;
 
   const totalRevenue = displayData.reduce((s, d) => s + d.revenue, 0);
   const totalCommission = displayData.reduce((s, d) => s + d.commission, 0);
   const totalOrders = displayData.reduce((s, d) => s + d.orders, 0);
-  const totalNewUsers = displayData.reduce((s, d) => s + d.newUsers, 0);
+  const totalNewUsers = displayData.reduce((s, d) => s + d.new_users, 0);
 
-  // Seller leaderboard from mock orders
-  const sellerRevenue: Record<string, { name: string; revenue: number; orders: number; commission: number }> = {};
-  adminOrders.filter(o => o.status === 'completed').forEach(o => {
-    const seller = sellers.find(s => s.nurseryName === o.sellerName);
-    if (!sellerRevenue[o.sellerName]) {
-      sellerRevenue[o.sellerName] = { name: o.sellerName, revenue: 0, orders: 0, commission: 0 };
-    }
-    sellerRevenue[o.sellerName].revenue += o.total;
-    sellerRevenue[o.sellerName].orders += 1;
-    sellerRevenue[o.sellerName].commission += o.commission;
-    void seller;
-  });
-  const leaderboard = Object.values(sellerRevenue).sort((a, b) => b.revenue - a.revenue);
+  // Seller leaderboard sorted by total_orders
+  const leaderboard = [...sellers]
+    .sort((a, b) => b.total_orders - a.total_orders)
+    .slice(0, 5)
+    .map(s => ({
+      name: s.nursery_name,
+      orders: s.total_orders,
+      rating: s.rating,
+    }));
 
-  // Monthly new users bar data
-  const userGrowthData = displayData.map(d => ({ month: d.month, users: d.newUsers }));
+  const avgRating = sellers.length > 0
+    ? sellers.reduce((s, seller) => s + seller.rating, 0) / sellers.length
+    : 0;
 
   const exportReport = () => {
     const rows = [
       ['Month', 'Revenue', 'Orders', 'Commission', 'New Users'],
-      ...displayData.map(d => [d.month, d.revenue, d.orders, d.commission, d.newUsers]),
+      ...displayData.map(d => [d.month, d.revenue, d.orders, d.commission, d.new_users]),
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a');
@@ -59,8 +82,17 @@ export default function AnalyticsScreen() {
     a.click();
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
+
       {/* Period selector + export */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg border overflow-hidden text-xs">
@@ -84,10 +116,10 @@ export default function AnalyticsScreen() {
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { icon: DollarSign, label: 'Total Revenue', labelKh: 'ប្រាក់ចំណូលសរុប', value: formatUSD(totalRevenue), color: 'text-accent-green', bg: 'bg-forest/10' },
-          { icon: TrendingUp, label: 'Commission Earned', labelKh: 'កំរៃជើងសារ', value: formatUSD(totalCommission), color: 'text-gold', bg: 'bg-gold/10' },
-          { icon: ShoppingBag, label: 'Total Orders', labelKh: 'ការបញ្ជាទិញ', value: totalOrders.toString(), color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/20' },
-          { icon: Users, label: 'New Users', labelKh: 'អ្នកប្រើថ្មី', value: totalNewUsers.toString(), color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/20' },
+          { icon: DollarSign, label: 'Total Revenue',     labelKh: 'ប្រាក់ចំណូលសរុប', value: formatUSD(totalRevenue),      color: 'text-accent-green', bg: 'bg-forest/10' },
+          { icon: TrendingUp, label: 'Commission Earned', labelKh: 'កំរៃជើងសារ',       value: formatUSD(totalCommission),   color: 'text-gold',         bg: 'bg-gold/10' },
+          { icon: ShoppingBag, label: 'Total Orders',     labelKh: 'ការបញ្ជាទិញ',       value: totalOrders.toString(),       color: 'text-blue-600',     bg: 'bg-blue-100 dark:bg-blue-900/20' },
+          { icon: Users,      label: 'New Users',         labelKh: 'អ្នកប្រើថ្មី',       value: totalNewUsers.toString(),     color: 'text-purple-600',   bg: 'bg-purple-100 dark:bg-purple-900/20' },
         ].map(({ icon: Icon, label, labelKh, value, color, bg }) => (
           <Card key={label}>
             <CardContent className="p-5 flex items-center gap-3">
@@ -103,78 +135,35 @@ export default function AnalyticsScreen() {
         ))}
       </div>
 
-      {/* Revenue trend + Category pie */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Card className="xl:col-span-2">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold">
-                {locale === 'kh' ? 'ជំនឿនៃប្រាក់ចំណូល' : 'Revenue Trend'}
-              </CardTitle>
-              <Badge variant="secondary" className="text-[10px]">{period === '6m' ? '6 months' : '12 months'}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={displayData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }}
-                  formatter={(v: number, name: string) => [`$${v.toFixed(0)}`, name === 'revenue' ? 'Revenue' : 'Commission']}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#52b788" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="commission" name="Commission" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
+      {/* Revenue trend */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold">
-              {locale === 'kh' ? 'ប្រាក់ចំណូលតាមប្រភេទ' : 'Revenue by Category'}
+              {locale === 'kh' ? 'ជំនឿនៃប្រាក់ចំណូល' : 'Revenue Trend'}
             </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={categoryRevenue}
-                  cx="50%" cy="50%"
-                  innerRadius={45} outerRadius={70}
-                  dataKey="value" paddingAngle={4}
-                  label={({ name, value }) => `${value}%`}
-                  labelLine={false}
-                >
-                  {categoryRevenue.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                  formatter={(v: number) => [`${v}%`, 'Share']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-1.5 mt-2">
-              {categoryRevenue.map(cat => (
-                <div key={cat.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-sm flex-shrink-0" style={{ background: cat.color }} />
-                    <span className="text-xs">{cat.name}</span>
-                  </div>
-                  <span className="text-xs font-medium">{cat.value}%</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Badge variant="secondary" className="text-[10px]">{period === '6m' ? '6 months' : '12 months'}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={displayData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
+              <Tooltip
+                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }}
+                formatter={(v: unknown, name: unknown) => [`$${Number(v).toFixed(0)}`, String(name) === 'revenue' ? 'Revenue' : 'Commission']}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#52b788" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="commission" name="Commission" stroke="#c9a84c" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
-      {/* Orders bar + User growth + Seller leaderboard */}
+      {/* Monthly Orders + User Growth + Seller Leaderboard */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -188,7 +177,10 @@ export default function AnalyticsScreen() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                  formatter={(v: unknown) => [String(v), 'Orders']}
+                />
                 <Bar dataKey="orders" name="Orders" fill="#52b788" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -203,7 +195,7 @@ export default function AnalyticsScreen() {
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={userGrowthData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <AreaChart data={displayData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -213,8 +205,11 @@ export default function AnalyticsScreen() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                <Area type="monotone" dataKey="users" name="New Users" stroke="#6366f1" fill="url(#colorUsers)" strokeWidth={2} dot={false} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                  formatter={(v: unknown) => [String(v), 'New Users']}
+                />
+                <Area type="monotone" dataKey="new_users" name="New Users" stroke="#6366f1" fill="url(#colorUsers)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -237,25 +232,23 @@ export default function AnalyticsScreen() {
                   <p className="text-xs font-medium truncate">{seller.name}</p>
                   <p className="text-[10px] text-muted-foreground">{seller.orders} orders</p>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-semibold text-accent-green">{formatUSD(seller.revenue)}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatUSD(seller.commission)} comm.</p>
+                <div className="text-right flex-shrink-0 flex items-center gap-1">
+                  <Star className="h-3 w-3 fill-gold text-gold" />
+                  <span className="text-xs font-semibold">{seller.rating.toFixed(1)}</span>
                 </div>
               </div>
             ))}
 
             {leaderboard.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">No data</p>
+              <p className="text-xs text-muted-foreground text-center py-6">No sellers yet</p>
             )}
 
             <div className="pt-2 border-t mt-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Platform average rating</span>
+                <span className="text-muted-foreground">{locale === 'kh' ? 'ការវាយតម្លៃជាមធ្យម' : 'Platform average rating'}</span>
                 <div className="flex items-center gap-1">
                   <Star className="h-3 w-3 fill-gold text-gold" />
-                  <span className="font-semibold">
-                    {(sellers.reduce((s, seller) => s + seller.rating, 0) / sellers.length).toFixed(1)}
-                  </span>
+                  <span className="font-semibold">{avgRating.toFixed(1)}</span>
                 </div>
               </div>
             </div>
@@ -288,7 +281,7 @@ export default function AnalyticsScreen() {
                   <td className="py-2.5 px-3 text-xs text-right">{row.orders}</td>
                   <td className="py-2.5 px-3 text-xs text-right">{formatUSD(row.revenue)}</td>
                   <td className="py-2.5 px-3 text-xs text-right font-semibold text-accent-green">{formatUSD(row.commission)}</td>
-                  <td className="py-2.5 px-3 text-xs text-right hidden md:table-cell">{row.newUsers}</td>
+                  <td className="py-2.5 px-3 text-xs text-right hidden md:table-cell">{row.new_users}</td>
                 </tr>
               ))}
               <tr className="font-bold bg-muted/30">

@@ -2,7 +2,6 @@
 
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { sellers } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, MapPin, Truck, ShoppingBag } from 'lucide-react';
@@ -58,16 +57,13 @@ export default function OrderConfirmationScreen() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {sellers.map(seller => (
-              <div key={seller.id} className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
-                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm">{seller.nurseryName}</p>
-                  <p className="text-xs text-muted-foreground">{seller.location}, {seller.district}</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              {locale === 'kh'
+                ? 'អ្នកលក់នឹងទាក់ទងអ្នកដើម្បីបញ្ជាក់ការចែកចាយ'
+                : 'The seller will contact you to arrange delivery details.'}
+            </p>
           </div>
         </CardContent>
       </Card>

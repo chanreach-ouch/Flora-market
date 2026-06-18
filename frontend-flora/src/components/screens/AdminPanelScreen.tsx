@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { sellers as mockSellers, mockOrders } from '@/lib/data';
-import type { MockSeller } from '@/lib/data';
-import { apiFetchSellers } from '@/lib/api';
+import type { MockSeller, MockOrder } from '@/lib/data';
+import { apiFetchSellers, apiFetchAllOrders, apiFetchStats } from '@/lib/api';
+import type { ApiStats } from '@/lib/api';
 import { formatUSD } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,21 +13,28 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Users, ShoppingBag, DollarSign, AlertTriangle, Shield,
-  CheckCircle, XCircle, Ban, Download, Search,
+  CheckCircle, Ban, Download, Search,
 } from 'lucide-react';
 
 export default function AdminPanelScreen() {
   const { locale } = useAppStore();
   const [sellerSearch, setSellerSearch] = useState('');
-  const [sellers, setSellers] = useState<MockSeller[]>(mockSellers);
+  const [sellers, setSellers] = useState<MockSeller[]>([]);
+  const [orders, setOrders] = useState<MockOrder[]>([]);
+  const [stats, setStats] = useState<ApiStats | null>(null);
 
   useEffect(() => {
-    apiFetchSellers().then(setSellers).catch(() => setSellers(mockSellers));
+    Promise.all([apiFetchSellers(), apiFetchAllOrders(), apiFetchStats()])
+      .then(([sellerList, orderList, statsData]) => {
+        setSellers(sellerList);
+        setOrders(orderList);
+        setStats(statsData);
+      })
+      .catch(() => {});
   }, []);
 
-  const totalSellers = sellers.length;
-  const totalOrders = mockOrders.length;
-  const totalCommission = mockOrders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total * 0.05, 0);
+  const totalOrders = stats?.total_orders ?? orders.length;
+  const totalCommission = stats?.total_commission ?? 0;
   const flaggedDisputes = 0;
 
   return (
@@ -50,7 +57,7 @@ export default function AdminPanelScreen() {
               <Users className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-muted-foreground">{t(locale, 'totalSellers')}</p>
-                <p className="text-xl font-bold">{totalSellers}</p>
+                <p className="text-xl font-bold">{stats?.active_sellers ?? sellers.length}</p>
               </div>
             </div>
           </CardContent>
@@ -125,38 +132,45 @@ export default function AdminPanelScreen() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sellers.filter(s => !sellerSearch || s.nurseryName.toLowerCase().includes(sellerSearch.toLowerCase())).map(seller => (
-                      <tr key={seller.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🏪</span>
-                            <div>
-                              <p className="font-medium">{seller.nurseryName}</p>
-                              <p className="text-xs text-muted-foreground">{seller.district}</p>
+                    {sellers
+                      .filter(s => !sellerSearch || s.nurseryName.toLowerCase().includes(sellerSearch.toLowerCase()))
+                      .map(seller => (
+                        <tr key={seller.id} className="border-b hover:bg-muted/50">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">🏪</span>
+                              <div>
+                                <p className="font-medium">{seller.nurseryName}</p>
+                                <p className="text-xs text-muted-foreground">{seller.district}</p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1">
-                            <span className="text-gold">★</span>
-                            <span>{seller.rating}</span>
-                          </div>
-                        </td>
-                        <td className="p-3">{seller.totalOrders}</td>
-                        <td className="p-3">
-                          <Badge className="bg-accent-green/10 text-accent-green text-xs">
-                            <CheckCircle className="h-3 w-3 mr-1" />{t(locale, 'verified')}
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1">
+                              <span className="text-gold">★</span>
+                              <span>{seller.rating}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">{seller.totalOrders}</td>
+                          <td className="p-3">
+                            <Badge className="bg-accent-green/10 text-accent-green text-xs">
+                              <CheckCircle className="h-3 w-3 mr-1" />{t(locale, 'verified')}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
                             <Button variant="ghost" size="sm" className="text-xs h-7">
                               <Ban className="h-3 w-3 mr-1" />{t(locale, 'suspend')}
                             </Button>
-                          </div>
+                          </td>
+                        </tr>
+                      ))}
+                    {sellers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-muted-foreground text-sm">
+                          {locale === 'kh' ? 'មិនមានអ្នកលក់' : 'No sellers yet'}
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -180,9 +194,9 @@ export default function AdminPanelScreen() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockOrders.map(order => (
+                    {orders.map(order => (
                       <tr key={order.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3 font-medium">{order.id}</td>
+                        <td className="p-3 font-mono text-xs font-medium">#{order.id.slice(0, 8)}</td>
                         <td className="p-3">{order.buyerName}</td>
                         <td className="p-3">{locale === 'kh' ? order.plantNameKh : order.plantNameEn}</td>
                         <td className="p-3">
@@ -191,6 +205,13 @@ export default function AdminPanelScreen() {
                         <td className="p-3 font-medium">{formatUSD(order.total)}</td>
                       </tr>
                     ))}
+                    {orders.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-muted-foreground text-sm">
+                          {locale === 'kh' ? 'មិនមានការបញ្ជាទិញ' : 'No orders yet'}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -219,7 +240,7 @@ export default function AdminPanelScreen() {
                   </thead>
                   <tbody>
                     {sellers.map(seller => {
-                      const sellerOrders = mockOrders.filter(o => o.sellerId === seller.id);
+                      const sellerOrders = orders.filter(o => o.sellerId === seller.id);
                       const gross = sellerOrders.reduce((s, o) => s + o.total, 0);
                       const commission = gross * 0.05;
                       return (
@@ -231,10 +252,10 @@ export default function AdminPanelScreen() {
                         </tr>
                       );
                     })}
-                    <tr className="font-bold">
+                    <tr className="font-bold border-t-2">
                       <td className="p-3">{locale === 'kh' ? 'សរុប' : 'Total'}</td>
-                      <td className="p-3">{mockOrders.length}</td>
-                      <td className="p-3">{formatUSD(mockOrders.reduce((s, o) => s + o.total, 0))}</td>
+                      <td className="p-3">{totalOrders}</td>
+                      <td className="p-3">{formatUSD(stats?.total_revenue ?? 0)}</td>
                       <td className="p-3 text-accent-green">{formatUSD(totalCommission)}</td>
                     </tr>
                   </tbody>
