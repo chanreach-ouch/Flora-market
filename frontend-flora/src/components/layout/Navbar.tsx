@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import { flyTargets, subscribeLand } from '@/lib/fly-animation';
+import { FloraLogo } from '@/components/ui/flora-logo';
 import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,17 +92,9 @@ export default function Navbar() {
         {/* Logo */}
         <button
           onClick={() => setScreen('home')}
-          className="flex items-center gap-2 hover:opacity-80 transition-flora"
+          className="hover:opacity-75 transition-flora"
         >
-          <span className="text-2xl">🌿</span>
-          <div className="flex flex-col">
-            <span className="font-bold text-lg leading-tight text-forest dark:text-pale-green">
-              {locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}
-            </span>
-            <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">
-              {locale === 'kh' ? 'Flora Market' : 'ផ្សាររុក្ខជាតិ'}
-            </span>
-          </div>
+          <FloraLogo size="sm" locale={locale} />
         </button>
 
         {/* Desktop Navigation */}
@@ -256,9 +249,8 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
-              <SheetTitle className="flex items-center gap-2 mb-6">
-                <span className="text-2xl">🌿</span>
-                <span className="font-bold text-lg">{locale === 'kh' ? 'ផ្សាររុក្ខជាតិ' : 'Flora Market'}</span>
+              <SheetTitle className="mb-6">
+                <FloraLogo size="sm" locale={locale} />
               </SheetTitle>
               <nav className="flex flex-col gap-1">
                 {navLinks.map((link) => (

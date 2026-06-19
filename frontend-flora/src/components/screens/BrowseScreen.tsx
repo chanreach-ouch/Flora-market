@@ -7,14 +7,13 @@ import { plants as mockPlants, getSellerById } from '@/lib/data';
 import type { MockPlant, MockSeller } from '@/lib/data';
 import { apiFetchPlants, apiFetchSellers } from '@/lib/api';
 import { showToast } from '@/components/ui/toast-custom';
-import { PlantImage, categoryStyles, DEFAULT_STYLE } from '@/components/ui/plant-image';
-import { triggerFly } from '@/lib/fly-animation';
+import { PlantCard } from '@/components/ui/plant-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Search, Heart, ShoppingCart, Star, MapPin, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 
 function PlantCardSkeleton() {
   return (
@@ -33,7 +32,7 @@ function PlantCardSkeleton() {
 }
 
 export default function BrowseScreen() {
-  const { locale, selectPlant, selectSeller, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useAppStore();
+  const { locale } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceRange, setPriceRange] = useState([0, 50]);
@@ -42,11 +41,17 @@ export default function BrowseScreen() {
   const [allPlants, setAllPlants] = useState<MockPlant[]>(mockPlants);
   const [sellerMap, setSellerMap] = useState<Record<string, MockSeller>>({});
   const [loading, setLoading] = useState(true);
+  const [maxPrice, setMaxPrice] = useState(50);
 
   useEffect(() => {
     setLoading(true);
     apiFetchPlants(selectedCategory !== 'All' ? selectedCategory : undefined)
-      .then(setAllPlants)
+      .then(plants => {
+        setAllPlants(plants);
+        const newMax = Math.max(50, ...plants.map(p => p.price));
+        setMaxPrice(newMax);
+        setPriceRange([0, newMax]);
+      })
       .catch(() => {
         setAllPlants(mockPlants);
         showToast('error', locale === 'kh' ? 'មិនអាចទាញទិន្នន័យ' : 'Could not load plants');
@@ -66,7 +71,6 @@ export default function BrowseScreen() {
 
   // Dynamic categories from loaded plants
   const dynamicCategories = ['All', ...Array.from(new Set(allPlants.map(p => p.category))).sort()];
-  const maxPrice = Math.max(50, ...allPlants.map(p => p.price));
 
   let filtered = allPlants
     .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
@@ -81,24 +85,6 @@ export default function BrowseScreen() {
   else if (sortBy === 'price-high') filtered = [...filtered].sort((a, b) => b.price - a.price);
   else if (sortBy === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
 
-  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>, plant: MockPlant) => {
-    e.stopPropagation();
-    const { emoji, gradient } = categoryStyles[plant.category] || DEFAULT_STYLE;
-    triggerFly(e.currentTarget, 'cart', emoji, gradient);
-    addToCart(plant.id);
-    showToast('success', locale === 'kh' ? 'បានបន្ថែមទៅរទោះ' : `${plant.nameEn} added to cart`);
-  };
-
-  const handleWishlist = (e: React.MouseEvent<HTMLButtonElement>, plant: MockPlant, wishlisted: boolean) => {
-    e.stopPropagation();
-    if (!wishlisted) {
-      const { emoji, gradient } = categoryStyles[plant.category] || DEFAULT_STYLE;
-      triggerFly(e.currentTarget, 'wishlist', emoji, gradient);
-      addToWishlist(plant.id);
-    } else {
-      removeFromWishlist(plant.id);
-    }
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -172,7 +158,7 @@ export default function BrowseScreen() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => { setSearchQuery(''); setPriceRange([0, 50]); setSortBy('name'); setSelectedCategory('All'); }}
+                onClick={() => { setSearchQuery(''); setPriceRange([0, maxPrice]); setSortBy('name'); setSelectedCategory('All'); }}
               >
                 {locale === 'kh' ? 'កំណត់ឡើងវិញ' : 'Reset Filters'}
               </Button>
@@ -217,50 +203,13 @@ export default function BrowseScreen() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map(plant => {
-                const seller = getSellerById(plant.sellerId) || sellerMap[plant.sellerId];
-                const wishlisted = isInWishlist(plant.id);
-                return (
-                  <Card key={plant.id} className="group card-shadow card-shadow-hover transition-flora overflow-hidden cursor-pointer">
-                    <div className="relative aspect-square overflow-hidden" onClick={() => selectPlant(plant.id)}>
-                      <PlantImage
-                        images={plant.images}
-                        category={plant.category}
-                        alt={plant.nameEn}
-                        className="w-full h-full"
-                        emojiSize="text-5xl"
-                      />
-                      <button
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleWishlist(e, plant, wishlisted)}
-                        className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 dark:bg-forest/80 flex items-center justify-center"
-                      >
-                        <Heart className={`h-4 w-4 ${wishlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
-                      </button>
-                    </div>
-                    <CardContent className="p-3 sm:p-4">
-                      <h3 className="font-semibold text-sm mb-1 line-clamp-1">{locale === 'kh' ? plant.nameKh : plant.nameEn}</h3>
-                      {seller && (
-                        <button onClick={() => selectSeller(seller.id)} className="text-xs text-muted-foreground hover:text-accent-green flex items-center gap-1 mb-2">
-                          <MapPin className="h-3 w-3" />{seller.nurseryName}
-                        </button>
-                      )}
-                      <div className="flex items-center gap-1 mb-2">
-                        <Star className="h-3 w-3 fill-gold text-gold" />
-                        <span className="text-xs">{plant.rating}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-sm">${plant.price.toFixed(2)}</span>
-                          <p className="text-[10px] text-muted-foreground">៛{Math.round(plant.price * 4100).toLocaleString()}</p>
-                        </div>
-                        <Button size="sm" className="h-7 px-2 bg-accent-green hover:bg-forest-mid text-white" onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleAddToCart(e, plant)}>
-                          <ShoppingCart className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {filtered.map(plant => (
+                <PlantCard
+                  key={plant.id}
+                  plant={plant}
+                  seller={getSellerById(plant.sellerId) || sellerMap[plant.sellerId] || null}
+                />
+              ))}
             </div>
           )}
         </div>
