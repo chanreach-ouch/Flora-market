@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
+import { flyTargets, subscribeLand } from '@/lib/fly-animation';
 import { t } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,12 +44,28 @@ import {
 export default function Navbar() {
   const {
     currentScreen, setScreen,
-    userRole, isAdmin, locale, toggleLocale,
+    isAdmin, locale, toggleLocale,
     darkMode, toggleDarkMode,
     isAuthenticated, logout, getCartCount, wishlistItems,
     openSellModal,
   } = useAppStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cartLandCount, setCartLandCount] = useState(0);
+  const [wishlistLandCount, setWishlistLandCount] = useState(0);
+  const cartRef = useRef<HTMLButtonElement>(null);
+  const wishlistRef = useRef<HTMLButtonElement>(null);
+
+  // Register fly targets + listen for landings
+  useEffect(() => {
+    if (cartRef.current) flyTargets.cart = cartRef.current;
+    if (wishlistRef.current) flyTargets.wishlist = wishlistRef.current;
+  });
+  useEffect(() => {
+    return subscribeLand(target => {
+      if (target === 'cart') setCartLandCount(n => n + 1);
+      else setWishlistLandCount(n => n + 1);
+    });
+  }, []);
 
   if (!isAuthenticated) return null;
 
@@ -89,23 +106,39 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Button
-              key={link.label}
-              variant={currentScreen === link.screen ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => handleNavClick(link.screen)}
-              className="relative gap-2"
-            >
-              <link.icon className="h-4 w-4" />
-              <span>{link.label}</span>
-              {link.badge ? (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-accent-green text-white">
-                  {link.badge}
-                </Badge>
-              ) : null}
-            </Button>
-          ))}
+          {navLinks.map((link) => {
+            const isCart = link.screen === 'cart';
+            const isWishlist = link.screen === 'wishlist';
+            const landCount = isCart ? cartLandCount : isWishlist ? wishlistLandCount : 0;
+            const btnRef = isCart ? cartRef : isWishlist ? wishlistRef : undefined;
+            return (
+              <Button
+                ref={btnRef}
+                key={link.label}
+                variant={currentScreen === link.screen ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => handleNavClick(link.screen)}
+                className="relative gap-2"
+              >
+                {/* Icon wrapper — key changes on land to restart CSS animation */}
+                <span
+                  key={`icon-${link.screen}-${landCount}`}
+                  className={`inline-flex items-center justify-center${landCount > 0 ? ' animate-fly-shake' : ''}`}
+                >
+                  <link.icon className="h-4 w-4" />
+                </span>
+                <span>{link.label}</span>
+                {link.badge ? (
+                  <Badge
+                    key={`badge-${link.screen}-${landCount}`}
+                    className={`absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-accent-green text-white${landCount > 0 ? ' animate-badge-pop' : ''}`}
+                  >
+                    {link.badge}
+                  </Badge>
+                ) : null}
+              </Button>
+            );
+          })}
         </nav>
 
         {/* Right Actions */}

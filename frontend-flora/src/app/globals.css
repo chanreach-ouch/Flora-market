@@ -183,6 +183,32 @@
   animation: gradientShift 6s ease infinite;
 }
 
+/* Fly-to-target: icon shake on landing */
+@keyframes fly-shake {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  15%       { transform: rotate(-20deg) scale(1.32); }
+  30%       { transform: rotate(15deg) scale(1.2); }
+  45%       { transform: rotate(-10deg) scale(1.09); }
+  60%       { transform: rotate(7deg)  scale(1.04); }
+  75%       { transform: rotate(-3deg) scale(1.01); }
+}
+.animate-fly-shake {
+  animation: fly-shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  transform-origin: center;
+}
+
+/* Fly-to-target: badge spring pop on landing */
+@keyframes badge-pop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.9); }
+  58%  { transform: scale(0.78); }
+  80%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.animate-badge-pop {
+  animation: badge-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* Success animation */
 @keyframes scaleIn {
   0% { transform: scale(0); opacity: 0; }

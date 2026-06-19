@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getPlantById, getSellerById, getReviewsByPlant, plantEmojis } from '@/lib/data';
+import { getPlantById, getSellerById, getReviewsByPlant } from '@/lib/data';
 import type { MockPlant, MockSeller, MockReview } from '@/lib/data';
 import { apiFetchPlantById, apiFetchSellerById, apiFetchReviewsByPlant } from '@/lib/api';
+import { PlantImage } from '@/components/ui/plant-image';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,20 +20,37 @@ export default function PlantDetailScreen() {
   const [plant, setPlant] = useState<MockPlant | undefined>(mockPlant);
   const [seller, setSeller] = useState<MockSeller | undefined>(mockPlant ? getSellerById(mockPlant.sellerId) : undefined);
   const [reviews, setReviews] = useState<MockReview[]>(mockPlant ? getReviewsByPlant(mockPlant.id) : []);
+  const [loading, setLoading] = useState(!mockPlant);
 
   useEffect(() => {
     if (!selectedPlantId) return;
+    setLoading(true);
     apiFetchPlantById(selectedPlantId)
       .then(p => {
         setPlant(p);
         apiFetchSellerById(p.sellerId).then(setSeller).catch(() => {});
         apiFetchReviewsByPlant(p.id).then(setReviews).catch(() => {});
       })
-      .catch(() => {
-        // keep mock data already set
-      });
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [selectedPlantId]);
 
+  if (loading && !plant) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <Skeleton className="h-8 w-20 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Skeleton className="aspect-square rounded-2xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!plant) return null;
   const wishlisted = isInWishlist(plant.id);
 
@@ -46,10 +65,14 @@ export default function PlantDetailScreen() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Left - Images */}
         <div>
-          <div className="aspect-square rounded-2xl bg-gradient-to-br from-pale-green to-cream dark:from-forest-mid/30 dark:to-forest/30 flex items-center justify-center card-shadow">
-            <span className="text-[120px] sm:text-[160px] opacity-70">
-              {plantEmojis[plant.category] || '🌿'}
-            </span>
+          <div className="aspect-square rounded-2xl overflow-hidden card-shadow group">
+            <PlantImage
+              images={plant.images}
+              category={plant.category}
+              alt={plant.nameEn}
+              className="w-full h-full"
+              emojiSize="text-[100px] sm:text-[140px]"
+            />
           </div>
         </div>
 

@@ -8,6 +8,7 @@ import type { MockPlant, MockSeller } from '@/lib/data';
 import { formatUSD, formatKHR } from '@/lib/i18n';
 import { apiFetchPlantById, apiFetchSellerById, apiPlaceOrders } from '@/lib/api';
 import { showToast } from '@/components/ui/toast-custom';
+import { PlantImage } from '@/components/ui/plant-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -140,8 +141,14 @@ export default function CartScreen() {
                 <div className="space-y-4">
                   {group.items.map(item => (
                     <div key={item.plantId} className="flex gap-4">
-                      <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl bg-gradient-to-br from-pale-green to-cream dark:from-forest-mid/30 dark:to-forest/30 flex items-center justify-center shrink-0">
-                        <span className="text-2xl sm:text-3xl">🌿</span>
+                      <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden shrink-0">
+                        <PlantImage
+                          images={item.plant?.images}
+                          category={item.plant?.category}
+                          alt={item.plant?.nameEn}
+                          className="w-full h-full"
+                          emojiSize="text-2xl sm:text-3xl"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sm sm:text-base truncate">

@@ -17,6 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface OrderItem {
   id: string;
@@ -51,12 +61,16 @@ const nextStatus: Record<string, string | null> = {
   cancelled: null,
 };
 
+const PAGE_SIZE = 20;
+
 export default function OrdersScreen() {
   const { locale } = useAppStore();
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
+  const [cancelTarget, setCancelTarget] = useState<ApiOrder | null>(null);
 
   useEffect(() => {
     getAllOrders({ limit: 500 })
@@ -66,10 +80,12 @@ export default function OrdersScreen() {
   }, []);
 
   const filtered = orders.filter(o => {
-    const matchSearch = !search || o.id.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || o.id.toLowerCase().includes(search.toLowerCase()) || friendlyId(o.id).toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const counts = {
     all: orders.length,
@@ -93,12 +109,17 @@ export default function OrdersScreen() {
     } catch { /* ignore */ }
   };
 
-  const cancelOrder = async (order: ApiOrder) => {
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
     try {
-      await updateOrderStatus(order.id, 'cancelled');
-      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
-    } catch { /* ignore */ }
+      await updateOrderStatus(cancelTarget.id, 'cancelled');
+      setOrders(prev => prev.map(o => o.id === cancelTarget.id ? { ...o, status: 'cancelled' } : o));
+    } catch { /* ignore */ } finally {
+      setCancelTarget(null);
+    }
   };
+
+  const friendlyId = (id: string) => `#ORD-${id.slice(0, 6).toUpperCase()}`;
 
   const exportCsv = () => {
     const rows = [
@@ -235,7 +256,7 @@ export default function OrdersScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(order => {
+                  {paginated.map(order => {
                     const s = statusConfig[order.status];
                     const next = nextStatus[order.status];
                     const commission = order.status === 'completed' ? order.total_amount * 0.05 : 0;
@@ -243,7 +264,7 @@ export default function OrdersScreen() {
                       <tr key={order.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-3">
                           <div>
-                            <span className="font-mono text-xs font-semibold">#{order.id.slice(0, 8)}</span>
+                            <span className="font-mono text-xs font-semibold">{friendlyId(order.id)}</span>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
                               Buyer: {order.buyer_id.slice(0, 8)}
                             </p>
@@ -295,7 +316,7 @@ export default function OrdersScreen() {
                               )}
                               {order.status !== 'cancelled' && order.status !== 'completed' && (
                                 <DropdownMenuItem
-                                  onClick={() => cancelOrder(order)}
+                                  onClick={() => setCancelTarget(order)}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <XCircle className="mr-2 h-3.5 w-3.5" />
@@ -320,14 +341,48 @@ export default function OrdersScreen() {
               <div className="flex items-center justify-between pt-3 border-t mt-2">
                 <p className="text-xs text-muted-foreground">
                   {locale === 'kh'
-                    ? `បង្ហាញ ${filtered.length} / ${orders.length}`
-                    : `Showing ${filtered.length} of ${orders.length} orders`}
+                    ? `បង្ហាញ ${paginated.length} / ${filtered.length}`
+                    : `Showing ${paginated.length} of ${filtered.length} orders`}
                 </p>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                      <Button
+                        key={p}
+                        variant={page === p ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 w-7 p-0 text-xs"
+                        onClick={() => setPage(p)}
+                      >{p}</Button>
+                    ))}
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>›</Button>
+                  </div>
+                )}
               </div>
             </>
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={open => { if (!open) setCancelTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{locale === 'kh' ? 'បញ្ជាក់ការលុបចោល' : 'Cancel this order?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {locale === 'kh'
+                ? `តើអ្នកប្រាកដជាចង់លុបចោល ${cancelTarget ? friendlyId(cancelTarget.id) : ''}?`
+                : `This will cancel ${cancelTarget ? friendlyId(cancelTarget.id) : ''} and cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{locale === 'kh' ? 'ថយក្រោយ' : 'Go back'}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancel} className="bg-destructive hover:bg-destructive/90 text-white">
+              {locale === 'kh' ? 'លុបចោល' : 'Cancel order'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -24,9 +24,10 @@ import TermsOfServiceScreen from '@/components/screens/TermsOfServiceScreen';
 import MyListingsScreen from '@/components/screens/MyListingsScreen';
 import SellPlantModal from '@/components/modals/SellPlantModal';
 import { ToastContainer } from '@/components/ui/toast-custom';
+import { FlyAnimationLayer } from '@/components/ui/fly-animation-layer';
 
 export default function Home() {
-  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, userRole, darkMode, sellModalOpen, closeSellModal } = useAppStore();
+  const { currentScreen, selectedPlantId, isAuthenticated, selectPlant, darkMode, sellModalOpen, closeSellModal } = useAppStore();
 
   // Apply dark mode on mount
   useEffect(() => {
@@ -114,6 +115,8 @@ export default function Home() {
       
       {/* Toast Notifications */}
       <ToastContainer />
+      {/* Fly-to-target animation layer (renders flying dots in a portal) */}
+      <FlyAnimationLayer />
     </div>
   );
 }

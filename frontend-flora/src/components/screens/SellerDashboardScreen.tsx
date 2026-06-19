@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { plantEmojis } from '@/lib/data';
@@ -18,19 +18,10 @@ import {
 } from 'recharts';
 import {
   ShoppingBag, DollarSign, Leaf, Star, Plus, Search, Package,
-  Clock, CheckCircle, Truck, AlertCircle, Edit, ToggleLeft, ToggleRight,
+  Clock, CheckCircle, Edit, ToggleLeft, ToggleRight,
   TrendingUp, ChevronRight,
 } from 'lucide-react';
 
-// Revenue chart data - showing gross revenue and seller earnings separately
-const revenueData = [
-  { month: 'Jan', revenue: 480, earnings: 456 },
-  { month: 'Feb', revenue: 320, earnings: 304 },
-  { month: 'Mar', revenue: 750, earnings: 712.5 },
-  { month: 'Apr', revenue: 590, earnings: 560.5 },
-  { month: 'May', revenue: 1120, earnings: 1064 },
-  { month: 'Jun', revenue: 870, earnings: 826.5 },
-];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -89,6 +80,21 @@ export default function SellerDashboardScreen() {
   );
   const sellerOrders = orders.filter(o => seller ? o.sellerId === seller.id : true);
   const filteredOrders = sellerOrders.filter(o => orderFilter === 'all' || o.status === orderFilter);
+
+  const revenueData = useMemo(() => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i);
+      const completed = sellerOrders.filter(o => {
+        if (o.status !== 'completed') return false;
+        const ts = new Date(o.timestamp.replace(' ', 'T'));
+        return !isNaN(ts.getTime()) && ts.getFullYear() === d.getFullYear() && ts.getMonth() === d.getMonth();
+      });
+      const revenue = completed.reduce((s, o) => s + o.total, 0);
+      return { month: monthNames[d.getMonth()], revenue, earnings: +(revenue * 0.95).toFixed(2) };
+    });
+  }, [sellerOrders]);
 
   const todayOrders = sellerOrders.filter(o => o.status === 'pending').length;
   const totalRevenue = sellerOrders.filter(o => o.status === 'completed').reduce((s, o) => s + o.total, 0);
@@ -569,7 +575,7 @@ export default function SellerDashboardScreen() {
                       {/* Progress Bar - Simplified 3-step */}
                       <div className="mt-4 pt-3 border-t">
                         <div className="flex items-center gap-1">
-                          {(['pending', 'preparing', 'completed'] as OrderStatus[]).map((step, idx) => {
+                          {(['pending', 'preparing', 'completed'] as OrderStatus[]).map((step) => {
                             const stepConfig = statusConfig[step];
                             const isActive = config.step >= stepConfig.step;
                             const isCurrent = order.status === step;
