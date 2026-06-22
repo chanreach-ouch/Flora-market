@@ -276,6 +276,16 @@ export async function apiFetchReviewsBySeller(sellerId: string): Promise<MockRev
   return data.map(mapReview);
 }
 
+export async function apiPostReview(payload: {
+  plant_id: string;
+  seller_id: string;
+  rating: number;
+  comment: string;
+}): Promise<MockReview> {
+  const data: ApiReview = await fetchApi('/reviews/', { method: 'POST', body: JSON.stringify(payload) });
+  return mapReview(data);
+}
+
 // Orders
 export async function apiPlaceOrders(
   groups: { sellerId: string; items: { plant_id: string; quantity: number }[] }[]

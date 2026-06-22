@@ -30,7 +30,7 @@ export function PlantImage({ images, category, className, emojiSize = 'text-5xl 
   const style = categoryStyles[category || ''] || DEFAULT_STYLE;
 
   const url = images?.[0];
-  const isAbsolute = url && (url.startsWith('http://') || url.startsWith('https://'));
+  const isAbsolute = url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image/'));
   const showImg = isAbsolute && !imgFailed;
 
   if (showImg) {

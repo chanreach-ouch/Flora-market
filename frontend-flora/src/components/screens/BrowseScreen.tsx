@@ -119,16 +119,20 @@ export default function BrowseScreen() {
               {/* Price Range */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  {locale === 'kh' ? 'ជួរតម្លៃ' : 'Price Range'}: ${priceRange[0]} – ${priceRange[1]}
+                  {locale === 'kh' ? 'តម្លៃអតិបរមា' : 'Max Price'}: ${priceRange[1]}
                 </label>
                 <Slider
                   min={0}
                   max={maxPrice}
                   step={1}
-                  value={priceRange}
-                  onValueChange={setPriceRange}
+                  value={[priceRange[1]]}
+                  onValueChange={([max]) => setPriceRange([0, max])}
                   className="mt-2"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                  <span>$0</span>
+                  <span>${maxPrice}</span>
+                </div>
               </div>
 
               {/* Sort */}

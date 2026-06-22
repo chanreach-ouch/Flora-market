@@ -81,7 +81,7 @@ export function PlantCard({ plant, seller }: PlantCardProps) {
   const { emoji, gradient } = categoryStyles[plant.category] || DEFAULT_STYLE;
 
   const imageUrl = plant.images?.[0];
-  const showRealImg = !!imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) && !imgFailed;
+  const showRealImg = !!imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:image/')) && !imgFailed;
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -143,9 +143,8 @@ export function PlantCard({ plant, seller }: PlantCardProps) {
           </div>
         )}
 
-        {/* New arrival badge — dark green bg, sage text */}
         {plant.isNew && !outOfStock && (
-          <span className="absolute top-2.5 left-2.5 z-[2] text-[10px] font-semibold tracking-wide bg-forest text-pale-green px-2.5 py-1 rounded-full">
+          <span className="absolute top-2.5 left-2.5 z-[2] text-[10px] font-semibold tracking-wide bg-gold text-white px-2.5 py-1 rounded-full shadow-sm">
             ✦ {locale === 'kh' ? 'ទើបមក' : 'New arrival'}
           </span>
         )}
